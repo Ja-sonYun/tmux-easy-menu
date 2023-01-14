@@ -1,6 +1,6 @@
 # tmux-easy-menu
 
-### Tmux easy configuration
+### Easy configurable tmux display-menu
 
 ![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/example.gif?raw=true)
 
