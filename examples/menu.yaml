@@ -1,0 +1,44 @@
+# title: "..."
+#
+# position:  <- Optional
+#   x: ...
+#   y: ...
+#
+# items:
+#   - Seperate: {}
+#
+#   - NoDim:
+#       name: "..."
+#
+#   - Menu:
+#       name: "..."
+#       shortcut: "..."
+#       ------------------
+#
+#       next_menu: "..."
+#
+#         OR
+#
+#       command: "command %%KEY%%"
+#
+#       close_after_command: true  <- Optional
+#       inputs:
+#         - KEY  <- This replace %%KEY%% on command
+#       position:  <- Optional
+#         x: ...
+#         y: ...
+#         w: ...
+#         h: ...
+
+title: menu
+items:
+
+  - NoDim:
+      name: "User: $(whoami)"
+
+  - Seperate: {}
+
+  - Menu:
+      name: "git"
+      shortcut: g
+      next_menu: "examples/git.yaml"

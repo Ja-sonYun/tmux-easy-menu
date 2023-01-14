@@ -1,0 +1,22 @@
+title: git
+items:
+
+  - NoDim:
+      name: "$(git branch)"
+
+  - Seperate: {}
+
+  - Menu:
+      name: "tig"
+      shortcut: t
+      command: tig
+
+  - Menu:
+      name: "gitui"
+      shortcut: g
+      command: gitui
+
+  - Menu:
+      name: "gh dash"
+      shortcut: d
+      command: gh dash
