@@ -13,8 +13,8 @@ fn default_none() -> Option<String> {
     None
 }
 
-fn default_false() -> bool {
-    false
+fn default_true() -> bool {
+    true
 }
 
 fn default_vec() -> Vec<String> {
@@ -33,7 +33,7 @@ pub enum MenuType {
         #[serde(default = "default_none")]
         next_menu: Option<String>,
 
-        #[serde(default = "default_false")]
+        #[serde(default = "default_true")]
         close_after_command: bool,
 
         #[serde(default = "default_vec")]
@@ -110,7 +110,7 @@ impl MenuType {
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
                     wrapped_command.push(format!(
-                        "cd \"{}\" && {}",
+                        "cd {} && {}",
                         current_dir()?.display(),
                         command
                     ));

@@ -107,7 +107,7 @@ fn main() -> Result<()> {
             let mut received_inputs: HashMap<String, String> = HashMap::new();
 
             for key in get_inputs(sub_matches.get_many::<String>("key")) {
-                print!("{}: ", key);
+                print!(" > {}: ", key);
                 std::io::stdout().flush().unwrap();
 
                 let mut input = String::new();

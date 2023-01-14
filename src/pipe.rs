@@ -8,13 +8,17 @@ use std::os::unix::fs::OpenOptionsExt;
 static PIPE_PATH: &str = "/tmp/tmux-menu.pipe";
 
 pub fn mkpipe() -> Result<()> {
+    remove_pipe()?;
     mkfifo(PIPE_PATH, stat::Mode::S_IRWXU)?;
 
     Ok(())
 }
 
 pub fn remove_pipe() -> Result<()> {
-    std::fs::remove_file(PIPE_PATH)?;
+    let path = std::path::Path::new(PIPE_PATH);
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
 
     Ok(())
 }
