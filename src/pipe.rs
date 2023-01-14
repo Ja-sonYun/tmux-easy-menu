@@ -35,9 +35,7 @@ pub fn write_pipe(value: String) -> Result<()> {
 }
 
 pub fn read_pipe() -> Result<String> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .open(PIPE_PATH)?;
+    let mut file = OpenOptions::new().read(true).open(PIPE_PATH)?;
 
     let mut contents = String::new();
     file.read_to_string(&mut contents)?;

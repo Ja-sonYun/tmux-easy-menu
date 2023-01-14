@@ -7,14 +7,21 @@ use anyhow::Result;
 static DISPLAY_MENU: &str = "display-menu";
 
 impl Tmux {
-    fn construct_menu_arguments(menu_items: &Vec<MenuType>, prev_path: &PathBuf) -> Vec<String> {
+    fn construct_menu_arguments(
+        menu_items: &Vec<MenuType>,
+        prev_path: &PathBuf,
+        cwd: &PathBuf,
+    ) -> Vec<String> {
         menu_items
             .iter()
             .map(|menu| match menu {
                 MenuType::Menu { name, shortcut, .. } => vec![
                     name.clone(),
                     shortcut.clone(),
-                    format!("run -b '{}'", menu.get_execute_command(prev_path).unwrap()),
+                    format!(
+                        "run -b '{}'",
+                        menu.get_execute_command(prev_path, cwd).unwrap()
+                    ),
                 ],
                 MenuType::NoDim { name } => {
                     vec![format!("-#[nodim]{}", name), "".to_string(), "".to_string()]
@@ -41,6 +48,7 @@ impl Tmux {
         arguments.append(&mut Self::construct_menu_arguments(
             &menu.items,
             &menu.conf_path,
+            &menu.cwd,
         ));
 
         self._run(arguments, true)

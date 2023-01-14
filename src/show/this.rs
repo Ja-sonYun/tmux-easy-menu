@@ -1,5 +1,6 @@
 use anyhow::Result;
-use std::env::{current_dir, current_exe};
+use std::env::current_exe;
+use std::path::PathBuf;
 
 fn parse_arguments(args: Vec<String>) -> Result<String> {
     // Parse arguments here, if argument has spaces, wrap it in quotes
@@ -17,13 +18,13 @@ fn parse_arguments(args: Vec<String>) -> Result<String> {
     Ok(result)
 }
 
-pub fn run_this_with(args: Vec<String>) -> Result<String> {
+pub fn run_this_with(on_dir: &PathBuf, args: Vec<String>) -> Result<String> {
     let this_binary = current_exe()?;
 
     // TODO: Unwrap quote
     Ok(format!(
         "cd {} && {} {}",
-        current_dir()?.display(),
+        on_dir.to_str().unwrap(),
         this_binary.to_str().unwrap(),
         parse_arguments(args)?
     ))

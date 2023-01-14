@@ -1,12 +1,11 @@
 use crate::shell::run_command;
-use std::env::current_dir;
 
 use crate::show::construct_position::Position;
 use crate::show::this::run_this_with;
 use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::fs::File;
+use std::fs::{canonicalize, File};
 use std::path::PathBuf;
 
 fn default_none() -> Option<String> {
@@ -79,7 +78,7 @@ impl MenuType {
         }
     }
 
-    pub fn get_execute_command(&self, path: &PathBuf) -> Result<String> {
+    pub fn get_execute_command(&self, path: &PathBuf, on_dir: &PathBuf) -> Result<String> {
         match self {
             MenuType::NoDim { .. } | MenuType::Seperate { .. } => {
                 bail!("This menu type should be menu")
@@ -100,7 +99,7 @@ impl MenuType {
                     let next_menu_path = PathBuf::from(next_menu);
 
                     let prev_parent_path = path.parent().unwrap();
-                    let next_menu_path = prev_parent_path.join(next_menu_path);
+                    let next_menu_path = canonicalize(prev_parent_path.join(next_menu_path))?;
 
                     if !next_menu_path.exists() {
                         bail!("Next menu path does not exist: {:?}", next_menu_path);
@@ -109,9 +108,12 @@ impl MenuType {
                 } else if let Some(command) = command {
                     wrapped_command.push("popup".to_string());
 
+                    wrapped_command.push("--working_dir".to_string());
+                    wrapped_command.push(on_dir.to_str().unwrap().to_string());
+
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
-                    wrapped_command.push(format!("cd {} && {}", current_dir()?.display(), command));
+                    wrapped_command.push(format!("{}", command));
 
                     wrapped_command.extend(position.as_this_arguments());
 
@@ -125,7 +127,7 @@ impl MenuType {
                     }
                 }
 
-                run_this_with(wrapped_command)
+                run_this_with(on_dir, wrapped_command)
             }
         }
     }
@@ -136,6 +138,9 @@ pub struct Menus {
     #[serde(skip)]
     pub conf_path: PathBuf,
 
+    #[serde(skip)]
+    pub cwd: PathBuf,
+
     #[serde(default = "Position::new_xy")]
     pub position: Position,
 
@@ -144,10 +149,11 @@ pub struct Menus {
 }
 
 impl Menus {
-    pub fn load(path: PathBuf) -> Result<Menus> {
+    pub fn load(path: PathBuf, cwd: PathBuf) -> Result<Menus> {
         let file = File::open(&path)?;
         let mut menus: Menus = serde_yaml::from_reader(file)?;
         menus.conf_path = path;
+        menus.cwd = cwd;
 
         for menu in &mut menus.items {
             menu.eval_name();

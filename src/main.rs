@@ -12,6 +12,7 @@ use tmux::Tmux;
 
 use serde_yaml::to_string;
 use std::collections::HashMap;
+use std::fs::canonicalize;
 use std::io;
 use std::path::PathBuf;
 
@@ -23,6 +24,11 @@ fn cli() -> Command {
             Command::new("show")
                 .about("Show the menu")
                 .arg(arg!(--menu <MENU> "Path to the menu file").required(true))
+                .arg(
+                    arg!(--working_dir <DIR> "Working directory")
+                        .required(false)
+                        .default_value("."),
+                )
                 .arg_required_else_help(true),
         )
         .subcommand(
@@ -35,6 +41,11 @@ fn cli() -> Command {
                 .arg(arg!(--h <H> "Height"))
                 .arg(arg!(--key <KEY> "Key to show").num_args(..))
                 .arg(arg!(-E --exit ... "Exit after command"))
+                .arg(
+                    arg!(--working_dir <DIR> "Working directory")
+                        .required(false)
+                        .default_value("."),
+                )
                 .arg_required_else_help(true),
         )
         .subcommand(
@@ -60,13 +71,12 @@ fn main() -> Result<()> {
 
     match matches.subcommand() {
         Some(("show", sub_matches)) => {
-            let path = PathBuf::from(
-                sub_matches
-                    .get_one::<String>("menu")
-                    .expect("PATH is required"),
-            );
+            let working_dir = canonicalize(PathBuf::from(
+                sub_matches.get_one::<String>("working_dir").unwrap(),
+            ))?;
+            let path = PathBuf::from(sub_matches.get_one::<String>("menu").unwrap());
 
-            let menus = Menus::load(path).expect("Failed to load menus");
+            let menus = Menus::load(path, working_dir).expect("Failed to load menus");
             let tmux = Tmux::new();
 
             tmux.display_menu(&menus)?;
@@ -74,12 +84,16 @@ fn main() -> Result<()> {
         Some(("popup", sub_matches)) => {
             let tmux = Tmux::new();
 
+            let working_dir = canonicalize(PathBuf::from(
+                sub_matches.get_one::<String>("working_dir").unwrap(),
+            ))?;
+
             // create pipe
             pipe::mkpipe()?;
 
             let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
             base_arguments.extend(get_inputs(sub_matches.get_many::<String>("key")));
-            let cmd_to_run_input_of_this = run_this_with(base_arguments)?;
+            let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
             tmux.display_popup(cmd_to_run_input_of_this, &Position::wh(50, 3), true, true)?;
 
             let result = pipe::read_pipe()?;
@@ -94,6 +108,11 @@ fn main() -> Result<()> {
             for (key, value) in received_inputs {
                 cmd = cmd.replace(&format!("%%{}%%", key), &value);
             }
+            cmd = format!(
+                "cd {} && {}",
+                working_dir.to_str().unwrap().to_string(),
+                cmd
+            );
 
             let x = sub_matches.get_one::<String>("x").unwrap().clone();
             let y = sub_matches.get_one::<String>("y").unwrap().clone();
