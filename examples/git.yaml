@@ -1,22 +1,51 @@
-title: git
+title: " git "
 items:
 
   - NoDim:
-      name: "$(git branch)"
+      name: " Folder '$(echo ${PWD##*/})'"
+
+  - NoDim:
+      name: " Branch $(git branch)"
 
   - Seperate: {}
 
   - Menu:
       name: "tig"
-      shortcut: t
+      shortcut: g
       command: tig
+
+      position:
+        w: 80
+        h: 50
 
   - Menu:
       name: "gitui"
-      shortcut: g
+      shortcut: u
       command: gitui
+
+      position:
+        w: 80
+        h: 50
 
   - Menu:
       name: "gh dash"
       shortcut: d
       command: gh dash
+
+      position:
+        w: 150
+        h: 80
+
+  - Seperate: {}
+
+  - Menu:
+      name: "dump gitignore"
+      shortcut: i
+      command: "gibo dump %%LANGUAGE%% | less && gibo dump %%LANGUAGE%% | pbcopy"
+
+      inputs:
+        - LANGUAGE
+
+      position:
+        w: 150
+        h: 80

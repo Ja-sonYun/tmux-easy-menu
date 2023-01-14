@@ -1,3 +1,9 @@
+# On tmux.conf
+#
+# bind-key k run-shell "cd tmux-menu && ./target/debug/tmux-menu show --menu ./examples/menu.yaml"
+#
+# =============================
+#
 # title: "..."
 #
 # position:  <- Optional
@@ -30,7 +36,7 @@
 #         w: ...
 #         h: ...
 
-title: menu
+title: " menu "
 items:
 
   - NoDim:
@@ -42,3 +48,8 @@ items:
       name: "git"
       shortcut: g
       next_menu: "examples/git.yaml"
+
+  - Menu:
+      name: "network"
+      shortcut: n
+      next_menu: "examples/network.yaml"

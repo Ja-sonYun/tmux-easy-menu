@@ -1,0 +1,23 @@
+title: " network "
+items:
+
+  - Menu:
+      name: "ping"
+      shortcut: p
+      command: "ping %%URL%% | less"
+
+      inputs:
+        - URL
+
+      position:
+        w: 80
+        h: 50
+
+  - Menu:
+      name: "search ssh-able ip"
+      shortcut: i
+      command: "sudo nmap -p 22 192.168.0.0/24 | less"
+
+      position:
+        w: 80
+        h: 50
