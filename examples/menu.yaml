@@ -1,6 +1,6 @@
 # On tmux.conf
 #
-# bind-key k run-shell "$HOME/tmux-menu/target/debug/tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working-dir #{pane_current_path}"
+# bind-key k run-shell "$HOME/tmux-menu/target/debug/tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
 #
 # =============================
 #

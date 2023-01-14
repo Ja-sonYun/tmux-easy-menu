@@ -5,7 +5,7 @@ items:
       name: " Folder '$(echo ${PWD##*/})'"
 
   - NoDim:
-      name: " Branch $(git branch)"
+      name: " Branch '$(git rev-parse --abbrev-ref HEAD)'"
 
   - Seperate: {}
 

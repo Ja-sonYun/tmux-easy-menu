@@ -105,6 +105,10 @@ impl MenuType {
                         bail!("Next menu path does not exist: {:?}", next_menu_path);
                     }
                     wrapped_command.push(next_menu_path.to_str().unwrap().to_string());
+
+                    wrapped_command.push("--working_dir".to_string());
+                    wrapped_command.push(on_dir.to_str().unwrap().to_string());
+
                 } else if let Some(command) = command {
                     wrapped_command.push("popup".to_string());
 
