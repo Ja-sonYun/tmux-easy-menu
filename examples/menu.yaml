@@ -47,9 +47,9 @@ items:
   - Menu:
       name: "git"
       shortcut: g
-      next_menu: "examples/git.yaml"
+      next_menu: "./git.yaml"
 
   - Menu:
       name: "network"
       shortcut: n
-      next_menu: "examples/network.yaml"
+      next_menu: "./network.yaml"

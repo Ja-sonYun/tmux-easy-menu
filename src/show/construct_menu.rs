@@ -79,7 +79,7 @@ impl MenuType {
         }
     }
 
-    pub fn get_execute_command(&self) -> Result<String> {
+    pub fn get_execute_command(&self, path: &PathBuf) -> Result<String> {
         match self {
             MenuType::NoDim { .. } | MenuType::Seperate { .. } => {
                 bail!("This menu type should be menu")
@@ -99,21 +99,19 @@ impl MenuType {
                     wrapped_command.push("--menu".to_string());
                     let next_menu_path = PathBuf::from(next_menu);
 
-                    if !next_menu_path.exists() {
-                        bail!("Menu file does not exist: {}", next_menu);
-                    }
+                    let prev_parent_path = path.parent().unwrap();
+                    let next_menu_path = prev_parent_path.join(next_menu_path);
 
-                    wrapped_command.push(next_menu.to_string());
+                    if !next_menu_path.exists() {
+                        bail!("Next menu path does not exist: {:?}", next_menu_path);
+                    }
+                    wrapped_command.push(next_menu_path.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
                     wrapped_command.push("popup".to_string());
 
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
-                    wrapped_command.push(format!(
-                        "cd {} && {}",
-                        current_dir()?.display(),
-                        command
-                    ));
+                    wrapped_command.push(format!("cd {} && {}", current_dir()?.display(), command));
 
                     wrapped_command.extend(position.as_this_arguments());
 
@@ -136,7 +134,7 @@ impl MenuType {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Menus {
     #[serde(skip)]
-    menu_path: PathBuf,
+    pub conf_path: PathBuf,
 
     #[serde(default = "Position::new_xy")]
     pub position: Position,
@@ -149,7 +147,7 @@ impl Menus {
     pub fn load(path: PathBuf) -> Result<Menus> {
         let file = File::open(&path)?;
         let mut menus: Menus = serde_yaml::from_reader(file)?;
-        menus.menu_path = path;
+        menus.conf_path = path;
 
         for menu in &mut menus.items {
             menu.eval_name();
