@@ -1,4 +1,5 @@
 use crate::shell::run_command;
+use std::env::current_dir;
 
 use crate::show::construct_position::Position;
 use crate::show::this::run_this_with;
@@ -107,7 +108,12 @@ impl MenuType {
                     wrapped_command.push("popup".to_string());
 
                     wrapped_command.push("--cmd".to_string());
-                    wrapped_command.push(command.to_string());
+                    // wrapped to move current directory before run command
+                    wrapped_command.push(format!(
+                        "cd \"{}\" && {}",
+                        current_dir()?.display(),
+                        command
+                    ));
 
                     wrapped_command.extend(position.as_this_arguments());
 

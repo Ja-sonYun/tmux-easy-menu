@@ -24,7 +24,7 @@ impl Tmux {
     }
 
     fn construct_title_arguments(title: &str) -> Vec<String> {
-        vec!["-T".to_string(), title.to_string()]
+        vec!["-T".to_string(), format!("{}{}", "#[align=centre fg=yellow]", title.to_string())]
     }
 
     pub fn display_menu(&self, menu: &Menus) -> Result<()> {
