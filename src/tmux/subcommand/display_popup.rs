@@ -1,3 +1,5 @@
+use std::process::Child;
+
 use crate::show::construct_position::Position;
 use crate::tmux::Tmux;
 use anyhow::Result;
@@ -14,8 +16,7 @@ impl Tmux {
         command: String,
         position: &Position,
         exit: bool,
-        non_block: bool,
-    ) -> Result<()> {
+    ) -> Result<Child> {
         let mut arguments = vec![DISPLAY_POPUP.to_string()];
 
         arguments.append(&mut Self::construct_border_arguments("double"));
@@ -25,6 +26,8 @@ impl Tmux {
         }
         arguments.push(command);
 
-        self._run(arguments, non_block)
+        let child = self._run(arguments, false)?;
+
+        Ok(child)
     }
 }

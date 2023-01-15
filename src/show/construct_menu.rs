@@ -64,7 +64,7 @@ impl MenuType {
 
                 for cap in re.captures_iter(name) {
                     let command = cap.get(1).unwrap().as_str();
-                    let output = run_command(command.to_string());
+                    let output = run_command(command.to_string()).expect("Failed to run command");
 
                     let idx = new_name.find(command).unwrap();
                     let start_idx = idx - 2; // -2 for the $(
@@ -108,7 +108,6 @@ impl MenuType {
 
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
-
                 } else if let Some(command) = command {
                     wrapped_command.push("popup".to_string());
 

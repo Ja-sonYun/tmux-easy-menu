@@ -1,6 +1,8 @@
 pub mod positions;
 pub mod subcommand;
 
+use std::process::Child;
+
 use crate::shell::{run_command, spawn_binary};
 use crate::show::construct_position::Position;
 use anyhow::Result;
@@ -11,14 +13,12 @@ pub struct Tmux {
 
 impl Tmux {
     fn _get_tmux_binary() -> Result<String> {
-        let output = run_command("which tmux".to_string());
+        let output = run_command("which tmux".to_string())?;
         Ok(output)
     }
 
-    fn _run(&self, arguments: Vec<String>, non_block: bool) -> Result<()> {
-        spawn_binary(self.binary.clone(), arguments, non_block)?;
-
-        Ok(())
+    fn _run(&self, arguments: Vec<String>, non_block: bool) -> Result<Child> {
+        spawn_binary(self.binary.clone(), arguments, non_block)
     }
 
     fn construct_position_arguments(position: &Position) -> Vec<String> {

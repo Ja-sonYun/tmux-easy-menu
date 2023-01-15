@@ -7,14 +7,14 @@ use std::os::unix::fs::OpenOptionsExt;
 
 static PIPE_PATH: &str = "/tmp/tmux-menu.pipe";
 
-pub fn mkpipe() -> Result<()> {
-    remove_pipe()?;
+pub fn create() -> Result<()> {
+    remove()?;
     mkfifo(PIPE_PATH, stat::Mode::S_IRWXU)?;
 
     Ok(())
 }
 
-pub fn remove_pipe() -> Result<()> {
+pub fn remove() -> Result<()> {
     let path = std::path::Path::new(PIPE_PATH);
     if path.exists() {
         std::fs::remove_file(path)?;
@@ -23,7 +23,7 @@ pub fn remove_pipe() -> Result<()> {
     Ok(())
 }
 
-pub fn write_pipe(value: String) -> Result<()> {
+pub fn write(value: String) -> Result<()> {
     OpenOptions::new()
         .write(true)
         .append(true)
@@ -34,11 +34,11 @@ pub fn write_pipe(value: String) -> Result<()> {
     Ok(())
 }
 
-pub fn read_pipe() -> Result<String> {
-    let mut file = OpenOptions::new().read(true).open(PIPE_PATH)?;
+pub fn read() -> Result<String> {
+    let mut reader = OpenOptions::new().read(true).open(PIPE_PATH)?;
 
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
+    let mut buffer = String::new();
+    reader.read_to_string(&mut buffer)?;
 
-    Ok(contents)
+    Ok(buffer)
 }

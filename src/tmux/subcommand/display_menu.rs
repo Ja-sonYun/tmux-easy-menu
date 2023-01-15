@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::process::Child;
 
 use crate::show::construct_menu::{MenuType, Menus};
 use crate::tmux::Tmux;
@@ -39,7 +40,7 @@ impl Tmux {
         ]
     }
 
-    pub fn display_menu(&self, menu: &Menus) -> Result<()> {
+    pub fn display_menu(&self, menu: &Menus) -> Result<Child> {
         let mut arguments = vec![DISPLAY_MENU.to_string()];
 
         arguments.append(&mut Self::construct_title_arguments(&menu.title));

@@ -1,5 +1,7 @@
 mod shell;
+
 use std::io::Write;
+
 mod pipe;
 mod show;
 mod tmux;
@@ -10,11 +12,13 @@ use show::{construct_menu::Menus, construct_position::Position, this::run_this_w
 use clap::{arg, parser::ValuesRef, Command};
 use tmux::Tmux;
 
+use ctrlc;
 use serde_yaml::to_string;
 use std::collections::HashMap;
 use std::fs::canonicalize;
 use std::io;
 use std::path::PathBuf;
+use std::thread;
 
 fn cli() -> Command {
     Command::new("tmux-menu")
@@ -89,15 +93,22 @@ fn main() -> Result<()> {
             ))?;
 
             // create pipe
-            pipe::mkpipe()?;
+            pipe::create()?;
 
             let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
             base_arguments.extend(get_inputs(sub_matches.get_many::<String>("key")));
             let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
-            tmux.display_popup(cmd_to_run_input_of_this, &Position::wh(50, 3), true, true)?;
 
-            let result = pipe::read_pipe()?;
-            pipe::remove_pipe()?;
+            let reader = thread::spawn(move || pipe::read().expect("Failed to read pipe"));
+
+            tmux.display_popup(cmd_to_run_input_of_this, &Position::wh(50, 3), true)
+                .expect("Failed to run command");
+
+            let result = reader.join().expect("Failed to join reader thread");
+
+            if result == "" {
+                return Ok(());
+            }
 
             let mut cmd = sub_matches
                 .get_one::<String>("cmd")
@@ -120,9 +131,17 @@ fn main() -> Result<()> {
             let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
 
-            tmux.display_popup(cmd, &Position { x, y, w, h }, e, false)?
+            pipe::remove()?;
+
+            tmux.display_popup(cmd, &Position { x, y, w, h }, e)
+                .expect("Failed to display popup");
         }
         Some(("input", sub_matches)) => {
+            ctrlc::set_handler(|| {
+                pipe::write("".to_string()).expect("Failed to write to pipe");
+                std::process::exit(0);
+            })?;
+
             let mut received_inputs: HashMap<String, String> = HashMap::new();
 
             for key in get_inputs(sub_matches.get_many::<String>("key")) {
@@ -143,7 +162,7 @@ fn main() -> Result<()> {
             }
 
             let serialized_result = to_string(&received_inputs)?;
-            pipe::write_pipe(serialized_result)?
+            pipe::write(serialized_result)?
         }
         _ => unreachable!(),
     }
