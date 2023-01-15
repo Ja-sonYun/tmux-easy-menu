@@ -51,6 +51,6 @@ impl Tmux {
             &menu.cwd,
         ));
 
-        self._run(arguments, true)
+        self._run(arguments, false)
     }
 }
