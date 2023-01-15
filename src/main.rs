@@ -10,9 +10,9 @@ use anyhow::Result;
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
+use std::sync::mpsc::channel;
 use tmux::Tmux;
 
-use ctrlc;
 use serde_yaml::to_string;
 use std::collections::HashMap;
 use std::fs::canonicalize;
@@ -99,10 +99,15 @@ fn main() -> Result<()> {
             base_arguments.extend(get_inputs(sub_matches.get_many::<String>("key")));
             let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
 
-            let reader = thread::spawn(move || pipe::read().expect("Failed to read pipe"));
+            // Trying to receive the input
+            let (tx, rx) = channel::<()>();
+            let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
             tmux.display_popup(cmd_to_run_input_of_this, &Position::wh(50, 3), true)
                 .expect("Failed to run command");
+
+            // Send the signal to stop reading
+            let _ = tx.send(());
 
             let result = reader.join().expect("Failed to join reader thread");
 
@@ -137,11 +142,6 @@ fn main() -> Result<()> {
                 .expect("Failed to display popup");
         }
         Some(("input", sub_matches)) => {
-            ctrlc::set_handler(|| {
-                pipe::write("".to_string()).expect("Failed to write to pipe");
-                std::process::exit(0);
-            })?;
-
             let mut received_inputs: HashMap<String, String> = HashMap::new();
 
             for key in get_inputs(sub_matches.get_many::<String>("key")) {
