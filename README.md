@@ -25,7 +25,7 @@ To see more actual config files, checkout `./examples` folder.
 #
 # title: "..."
 #
-# position:  <- Optional
+# position:
 #   x: ...
 #   y: ...
 #
@@ -46,10 +46,10 @@ To see more actual config files, checkout `./examples` folder.
 #
 #       command: "command %%KEY%%"
 #       background: false
-#       close_after_command: true  <- Optional
+#       close_after_command: true
 #       inputs:
 #         - KEY  <- This replace %%KEY%% on command
-#       position:  <- Optional
+#       position:
 #         x: ...
 #         y: ...
 #         w: ...
