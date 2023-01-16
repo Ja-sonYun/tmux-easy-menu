@@ -26,6 +26,7 @@
 #         OR
 #
 #       command: "command %%KEY%%"
+#       background: false
 #
 #       close_after_command: true  <- Optional
 #       inputs:

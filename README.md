@@ -54,3 +54,49 @@ To see more actual config files, checkout `./examples` folder.
 #         w: ...
 #         h: ...
 ```
+
+#### Dynamic menu
+![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic.gif?raw=true)
+Below example will show running brew services on display-menu, and restart it if clicked.
+```bash
+#!/bin/bash
+
+TEMP_PS_MENU_FILE="/tmp/ps_menu.yaml"
+rm -f $TEMP_PS_MENU_FILE
+cat > $TEMP_PS_MENU_FILE << EOM
+title: " brew services "
+items:
+  - Seperate: {}
+  - NoDim:
+      name: " Running services "
+  - NoDim:
+      name: " (select to restart) "
+  - Seperate: {}
+EOM
+
+brew services list | while read line
+do
+    program=$(echo $line | awk '{print $1}')
+    status=$(echo $line | awk '{print $2}')
+
+    if [ "$status" == "started" ]; then
+        cat >> $TEMP_PS_MENU_FILE <<- EOM
+  - Menu:
+      name: "$program"
+      shortcut: ".."
+      command: "brew services restart $program"
+EOM
+    fi
+done
+
+$PATH_TO_BINARY/tmux-menu show --menu $TEMP_PS_MENU_FILE
+rm -f $TEMP_PS_MENU_FILE
+```
+and add menu item as below
+```yaml
+  - Menu:
+      name: "restart brew services"
+      shortcut: b
+      command: "$PATH_TO_SCRIPT/generate_ps_menu.sh"
+      background: true
+```
