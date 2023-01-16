@@ -16,6 +16,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_false() -> bool {
+    false
+}
+
 fn default_vec() -> Vec<String> {
     Vec::new()
 }
@@ -34,6 +38,9 @@ pub enum MenuType {
 
         #[serde(default = "default_true")]
         close_after_command: bool,
+
+        #[serde(default = "default_false")]
+        background: bool,
 
         #[serde(default = "default_vec")]
         inputs: Vec<String>,
@@ -87,6 +94,7 @@ impl MenuType {
                 command,
                 next_menu,
                 close_after_command,
+                background,
                 position,
                 inputs,
                 ..
@@ -109,6 +117,9 @@ impl MenuType {
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
+                    if *background {
+                        return Ok(command.to_string());
+                    }
                     wrapped_command.push("popup".to_string());
 
                     wrapped_command.push("--working_dir".to_string());
