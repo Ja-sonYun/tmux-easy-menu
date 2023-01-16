@@ -30,25 +30,25 @@ To see more actual config files, checkout `./examples` folder.
 #   y: ...
 #
 # items:
-#   - Seperate: {}
+#   - Seperate: {}                    # Draw seperate line
 #
-#   - NoDim:
+#   - NoDim:                          # Add row, but unselectable
 #       name: "..."
 #
-#   - Menu:
+#   - Menu:                           # Add selectable row
 #       name: "..."
 #       shortcut: "..."
 #       ------------------
 #
-#       next_menu: "..."
+#       next_menu: "..."              # Show this menu if it selected
 #
 #        ... OR
 #
-#       command: "command %%KEY%%"
+#       command: "command %%KEY%%"    # Or run command
 #       background: false
 #       close_after_command: true
 #       inputs:
-#         - KEY  <- This replace %%KEY%% on command
+#         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:
 #         x: ...
 #         y: ...
