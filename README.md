@@ -57,6 +57,7 @@ To see more actual config files, checkout `./examples` folder.
 ```
 
 #### Dynamic menu
+![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic2.gif?raw=true)
 ![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic.gif?raw=true)
 Below example will show running brew services on display-menu, and restart it if clicked.
 ```bash
