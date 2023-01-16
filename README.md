@@ -60,10 +60,11 @@ To see more actual config files, checkout `./examples` folder.
 Below example will show running brew services on display-menu, and restart it if clicked.
 ```bash
 #!/bin/bash
+# generate_brew_services_restart_menu.sh
 
-TEMP_PS_MENU_FILE="/tmp/ps_menu.yaml"
-rm -f $TEMP_PS_MENU_FILE
-cat > $TEMP_PS_MENU_FILE << EOM
+TEMP_MENU_FILE="/tmp/temp_menu.yaml"
+rm -f $TEMP_MENU_FILE
+cat > $TEMP_MENU_FILE << EOM
 title: " brew services "
 items:
   - Seperate: {}
@@ -80,7 +81,7 @@ do
     status=$(echo $line | awk '{print $2}')
 
     if [ "$status" == "started" ]; then
-        cat >> $TEMP_PS_MENU_FILE <<- EOM
+        cat >> $TEMP_MENU_FILE <<- EOM
   - Menu:
       name: "$program"
       shortcut: ".."
@@ -89,14 +90,14 @@ EOM
     fi
 done
 
-$PATH_TO_BINARY/tmux-menu show --menu $TEMP_PS_MENU_FILE
-rm -f $TEMP_PS_MENU_FILE
+$PATH_TO_BINARY/tmux-menu show --menu $TEMP_MENU_FILE
+rm -f $TEMP_MENU_FILE
 ```
 and add menu item as below
 ```yaml
   - Menu:
       name: "restart brew services"
       shortcut: b
-      command: "$PATH_TO_SCRIPT/generate_ps_menu.sh"
+      command: "$PATH_TO_SCRIPT/generate_brew_services_restart_menu.sh"
       background: true
 ```
