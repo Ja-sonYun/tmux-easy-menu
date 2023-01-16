@@ -45,6 +45,7 @@ To see more actual config files, checkout `./examples` folder.
 #        ... OR
 #
 #       command: "command %%KEY%%"
+#       background: false
 #       close_after_command: true  <- Optional
 #       inputs:
 #         - KEY  <- This replace %%KEY%% on command
