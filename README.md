@@ -88,6 +88,7 @@ do
       name: "$program"
       shortcut: ".."
       command: "brew services restart $program"
+      background: true
 EOM
     fi
 done
