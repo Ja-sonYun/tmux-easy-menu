@@ -15,7 +15,7 @@ To see more actual config files, checkout `./examples` folder.
 ```yaml
 # On tmux.conf, add below line.
 #
-# bind-key k run-shell "$HOME/tmux-menu/target/debug/tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
+# bind-key k run-shell "tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
 #                       ^~~ Or add binary to your path
 # =============================
 #
@@ -89,7 +89,7 @@ EOM
     fi
 done
 
-$PATH_TO_BINARY/tmux-menu show --menu $TEMP_MENU_FILE
+tmux-menu show --menu $TEMP_MENU_FILE
 rm -f $TEMP_MENU_FILE
 ```
 and add menu item as below
