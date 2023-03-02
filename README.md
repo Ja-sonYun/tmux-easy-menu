@@ -40,7 +40,7 @@ To see more actual config files, checkout `./examples` folder.
 #
 #        ... OR
 #
-#       command: "command %%KEY%%"    # Or run command
+#       command: "command %%KEY%% --cwd %%PWD"    # Or run command, %%PWD will replaced with cwd
 #       background: false
 #       close_after_command: true
 #       inputs:
