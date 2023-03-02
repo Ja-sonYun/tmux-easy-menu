@@ -4,7 +4,13 @@ version = "0.1.0"
 edition = "2021"
 author = ["Ja-sonYun <killa30867@gmail.com>"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Easy configuration of tmux display-menu with yaml"
+repository = "https://github.com/Ja-sonYun/tmux-easy-menu"
+license = "MIT"
+readme = "README.md"
+
+[badges]
+github = { repository = "Ja-sonYun/tmux-easy-menu", workflow = "Rust" }
 
 [dependencies]
 anyhow = "1.0.68"
