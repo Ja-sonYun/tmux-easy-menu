@@ -118,7 +118,7 @@ impl MenuType {
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
                     if *background {
-                        return Ok(command.to_string());
+                        return Ok(format!("cd {} && {} &", on_dir.to_str().unwrap(), command.to_string(),));
                     }
                     wrapped_command.push("popup".to_string());
 

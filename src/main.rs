@@ -33,6 +33,7 @@ fn cli() -> Command {
                         .required(false)
                         .default_value("."),
                 )
+                .arg(arg!(-v --verbose ... "Verbose mode"))
                 .arg_required_else_help(true),
         )
         .subcommand(
@@ -79,11 +80,12 @@ fn main() -> Result<()> {
                 sub_matches.get_one::<String>("working_dir").unwrap(),
             ))?;
             let path = PathBuf::from(sub_matches.get_one::<String>("menu").unwrap());
+            let verbose = sub_matches.get_one::<u8>("verbose").unwrap();
 
             let menus = Menus::load(path, working_dir).expect("Failed to load menus");
             let tmux = Tmux::new();
 
-            tmux.display_menu(&menus)?;
+            tmux.display_menu(&menus, verbose)?;
         }
         Some(("popup", sub_matches)) => {
             let tmux = Tmux::new();

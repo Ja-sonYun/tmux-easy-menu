@@ -40,9 +40,11 @@ impl Tmux {
         ]
     }
 
-    pub fn display_menu(&self, menu: &Menus) -> Result<Child> {
+    pub fn display_menu(&self, menu: &Menus, verbose: &u8) -> Result<Child> {
         let mut arguments = vec![DISPLAY_MENU.to_string()];
-
+        if verbose > &1 {
+            println!("Displaying: {:?}", menu);
+        }
         arguments.append(&mut Self::construct_title_arguments(&menu.title));
         arguments.append(&mut Self::construct_position_arguments(&menu.position));
         arguments.push("".to_string()); // We have to add seperator here before menu items
@@ -51,6 +53,9 @@ impl Tmux {
             &menu.conf_path,
             &menu.cwd,
         ));
+        if verbose > &0 {
+            println!("Running: {}", arguments.join(" "));
+        }
 
         self._run(arguments, false)
     }
