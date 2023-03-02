@@ -1,4 +1,4 @@
-# tmux-easy-menu v0.1.1
+# tmux-easy-menu v0.1.2
 
 ### Easy configurable tmux display-menu
 
