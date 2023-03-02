@@ -117,6 +117,8 @@ impl MenuType {
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
+                    // Replace %%PWD with current directory, and escape double quotes
+                    let command = command.replace("\"", "\\\"").replace("%%PWD", on_dir.to_str().unwrap());
                     if *background {
                         return Ok(format!("cd {} && {} &", on_dir.to_str().unwrap(), command.to_string(),));
                     }

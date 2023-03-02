@@ -52,4 +52,4 @@ items:
   - Menu:
       name: "network"
       shortcut: n
-      next_menu: "./network.yaml"
+      next_menu: "echo awd"

@@ -30,7 +30,8 @@ items:
   - Menu:
       name: "gh dash"
       shortcut: d
-      command: gh dash
+      command: echo "%%PWD"
+      close_after_command: false
 
       position:
         w: 150
