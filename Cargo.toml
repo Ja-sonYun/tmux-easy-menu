@@ -1,6 +1,6 @@
 [package]
 name = "tmux-menu"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 author = ["Ja-sonYun <killa30867@gmail.com>"]
 
@@ -12,7 +12,6 @@ readme = "README.md"
 exclude = [
   "examples/*",
 ]
-
 
 [badges]
 github = { repository = "Ja-sonYun/tmux-easy-menu", workflow = "Rust" }

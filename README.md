@@ -1,4 +1,4 @@
-# tmux-easy-menu
+# tmux-easy-menu v0.1.1
 
 ### Easy configurable tmux display-menu
 
@@ -6,11 +6,7 @@
 
 ## Setup
 ```
-cargo build
-```
-And run with
-```
-./target/debug/tmux-menu show --menu {path-to-your-config}
+cargo install tmux-menu
 ```
 
 
