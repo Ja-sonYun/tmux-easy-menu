@@ -9,6 +9,11 @@ repository = "https://github.com/Ja-sonYun/tmux-easy-menu"
 license = "MIT"
 readme = "README.md"
 
+exclude = [
+  "examples/*",
+]
+
+
 [badges]
 github = { repository = "Ja-sonYun/tmux-easy-menu", workflow = "Rust" }
 
