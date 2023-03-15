@@ -28,6 +28,7 @@
 #       command: "command %%KEY%%"    # Or run command
 #       background: false
 #       close_after_command: true
+#       border: none                  # Select popup border type, optional
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:

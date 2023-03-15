@@ -1,4 +1,4 @@
-# tmux-easy-menu v0.1.3
+# tmux-easy-menu v0.1.4
 
 ### Easy configurable tmux display-menu
 
@@ -43,6 +43,7 @@ To see more actual config files, checkout `./examples` folder.
 #       command: "command %%KEY%% --cwd %%PWD"    # Or run command, %%PWD will replaced with cwd
 #       background: false
 #       close_after_command: true
+#       border: none                  # Select popup border type, optional
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:

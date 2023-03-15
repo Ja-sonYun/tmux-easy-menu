@@ -47,6 +47,9 @@ pub enum MenuType {
 
         #[serde(default = "Position::new_xywh")]
         position: Position,
+
+        #[serde(default = "default_none")]
+        border: Option<String>,
     },
     NoDim {
         name: String,
@@ -96,6 +99,7 @@ impl MenuType {
                 close_after_command,
                 background,
                 position,
+                border,
                 inputs,
                 ..
             } => {
@@ -132,6 +136,13 @@ impl MenuType {
                     wrapped_command.push(format!("{}", command));
 
                     wrapped_command.extend(position.as_this_arguments());
+
+                    wrapped_command.push("--border".to_string());
+                    if let Some(border) = border {
+                        wrapped_command.push(border.to_string());
+                    } else {
+                        wrapped_command.push("simple".to_string());
+                    }
 
                     if *close_after_command {
                         wrapped_command.push("-E".to_string());
