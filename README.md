@@ -20,7 +20,7 @@ To see more actual config files, checkout `./examples` folder.
 # =============================
 #
 # title: "..."
-#
+# border: "rounded"                   # Optional
 # position:
 #   x: ...
 #   y: ...
@@ -33,7 +33,7 @@ To see more actual config files, checkout `./examples` folder.
 #
 #   - Menu:                           # Add selectable row
 #       name: "..."
-#       shortcut: "..."
+#       shortcut: "..."               # Optional
 #       ------------------
 #
 #       next_menu: "..."              # Show this menu if it selected

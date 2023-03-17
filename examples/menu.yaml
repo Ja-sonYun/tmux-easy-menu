@@ -5,7 +5,7 @@
 # =============================
 #
 # title: "..."
-#
+# border: "rounded"                   # Optional
 # position:
 #   x: ...
 #   y: ...
@@ -18,7 +18,7 @@
 #
 #   - Menu:                           # Add selectable row
 #       name: "..."
-#       shortcut: "..."
+#       shortcut: "..."               # Optional
 #       ------------------
 #
 #       next_menu: "..."              # Show this menu if it selected
