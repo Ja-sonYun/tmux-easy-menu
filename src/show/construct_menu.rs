@@ -24,10 +24,16 @@ fn default_vec() -> Vec<String> {
     Vec::new()
 }
 
+fn default_empty_string() -> String {
+    "".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MenuType {
     Menu {
         name: String,
+
+        #[serde(default = "default_empty_string")]
         shortcut: String,
 
         #[serde(default = "default_none")]
