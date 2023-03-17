@@ -166,6 +166,10 @@ impl MenuType {
     }
 }
 
+fn default_border() -> String {
+    "single".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Menus {
     #[serde(skip)]
@@ -179,6 +183,9 @@ pub struct Menus {
 
     pub title: String,
     pub items: Vec<MenuType>,
+
+    #[serde(default = "default_border")]
+    pub border: String,
 }
 
 impl Menus {
@@ -190,6 +197,16 @@ impl Menus {
 
         for menu in &mut menus.items {
             menu.eval_name();
+
+            // Set default border
+            match menu {
+                MenuType::Menu { border, .. } => {
+                    if border.is_none() {
+                        *border = Some(menus.border.clone());
+                    }
+                }
+                _ => {}
+            }
         }
 
         Ok(menus)
