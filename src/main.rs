@@ -108,8 +108,13 @@ fn main() -> Result<()> {
 
             let border = sub_matches.get_one::<String>("border").unwrap().clone();
 
-            tmux.display_popup(cmd_to_run_input_of_this, &Position::wh(50, 3), &border, true)
-                .expect("Failed to run command");
+            tmux.display_popup(
+                cmd_to_run_input_of_this,
+                &Position::wh(50, 3),
+                &border,
+                true,
+            )
+            .expect("Failed to run command");
 
             // Send the signal to stop reading
             let _ = tx.send(());

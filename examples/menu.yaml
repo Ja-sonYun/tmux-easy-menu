@@ -29,6 +29,7 @@
 #       background: false
 #       close_after_command: true
 #       border: none                  # Select popup border type, optional
+#       session: false                # Run commmand in new session. Usefull for long running command.
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:
@@ -53,4 +54,10 @@ items:
   - Menu:
       name: "network"
       shortcut: n
-      next_menu: "echo awd"
+      next_menu: "./network.yaml"
+
+  - Menu:
+      name: "aichat"
+      shortcut: n
+      command: "aichat"
+      session: true
