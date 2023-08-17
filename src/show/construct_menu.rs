@@ -46,6 +46,9 @@ pub enum MenuType {
         close_after_command: bool,
 
         #[serde(default = "default_false")]
+        session: bool,
+
+        #[serde(default = "default_false")]
         background: bool,
 
         #[serde(default = "default_vec")]
@@ -105,6 +108,7 @@ impl MenuType {
                 close_after_command,
                 background,
                 position,
+                session,
                 border,
                 inputs,
                 ..
@@ -139,7 +143,18 @@ impl MenuType {
 
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
-                    wrapped_command.push(format!("{}", command));
+                    if *session {
+                        wrapped_command.push(format!("\
+                            tmux attach -t {session} 2>/dev/null || \
+                            (tmux new-session -d -s {session} {cmd} 2>/dev/null && \
+                            tmux set-option -t {session} status off 2>/dev/null && \
+                            tmux attach -t {session})",
+                            session=format!("session_{}", command),
+                            cmd=command
+                        ));
+                    } else {
+                        wrapped_command.push(format!("cd {} && {}", on_dir.to_str().unwrap(), command));
+                    }
 
                     wrapped_command.extend(position.as_this_arguments());
 
