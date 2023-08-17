@@ -45,6 +45,7 @@ To see more actual config files, checkout `./examples` folder.
 #       close_after_command: true
 #       border: none                  # Select popup border type, optional
 #       session: false                # Run commmand in new session. Usefull for long running command.
+#       session_name: name            # Session name, which will be used if session is true. This must be unique.
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:

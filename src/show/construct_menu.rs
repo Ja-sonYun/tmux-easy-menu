@@ -48,6 +48,9 @@ pub enum MenuType {
         #[serde(default = "default_false")]
         session: bool,
 
+        #[serde(default = "default_none")]
+        session_name: Option<String>,
+
         #[serde(default = "default_false")]
         background: bool,
 
@@ -109,6 +112,7 @@ impl MenuType {
                 background,
                 position,
                 session,
+                session_name,
                 border,
                 inputs,
                 ..
@@ -150,12 +154,17 @@ impl MenuType {
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
                     if *session {
+                        let _session_name = if let Some(session_name) = session_name {
+                            session_name.to_string()
+                        } else {
+                            format!("session_{}", command.replace(" ", "_"))
+                        };
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
                             (tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
-                            session = format!("session_{}", command.replace(" ", "_")),
+                            session = _session_name,
                             cmd = command
                         ));
                     } else {
