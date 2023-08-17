@@ -132,9 +132,15 @@ impl MenuType {
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
                     // Replace %%PWD with current directory, and escape double quotes
-                    let command = command.replace("\"", "\\\"").replace("%%PWD", on_dir.to_str().unwrap());
+                    let command = command
+                        .replace("\"", "\\\"")
+                        .replace("%%PWD", on_dir.to_str().unwrap());
                     if *background {
-                        return Ok(format!("cd {} && {} &", on_dir.to_str().unwrap(), command.to_string(),));
+                        return Ok(format!(
+                            "cd {} && {} &",
+                            on_dir.to_str().unwrap(),
+                            command.to_string(),
+                        ));
                     }
                     wrapped_command.push("popup".to_string());
 
@@ -144,16 +150,21 @@ impl MenuType {
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
                     if *session {
-                        wrapped_command.push(format!("\
+                        wrapped_command.push(format!(
+                            "\
                             tmux attach -t {session} 2>/dev/null || \
                             (tmux new-session -d -s {session} {cmd} 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
-                            session=format!("session_{}", command),
-                            cmd=command
+                            session = format!("session_{}", command),
+                            cmd = command
                         ));
                     } else {
-                        wrapped_command.push(format!("cd {} && {}", on_dir.to_str().unwrap(), command));
+                        wrapped_command.push(format!(
+                            "cd {} && {}",
+                            on_dir.to_str().unwrap(),
+                            command
+                        ));
                     }
 
                     wrapped_command.extend(position.as_this_arguments());
