@@ -1,4 +1,4 @@
-# tmux-easy-menu v0.1.5
+# tmux-easy-menu v0.1.6
 
 ### Easy configurable tmux display-menu
 
@@ -44,6 +44,7 @@ To see more actual config files, checkout `./examples` folder.
 #       background: false
 #       close_after_command: true
 #       border: none                  # Select popup border type, optional
+#       session: false                # Run commmand in new session. Usefull for long running command.
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:
