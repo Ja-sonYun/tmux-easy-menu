@@ -155,7 +155,7 @@ impl MenuType {
                             (tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
-                            session = format!("session_{}", command.split(" ").next().unwrap()),
+                            session = format!("session_{}", command.replace(" ", "_")),
                             cmd = command
                         ));
                     } else {
