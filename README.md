@@ -35,20 +35,20 @@ To see more actual config files, checkout `./examples` folder.
 #       name: "..."
 #       shortcut: "..."               # Optional
 #       ------------------
-#       # You can define action, next_menu or command
+#       # You can define next_menu or command
 #       next_menu: "..."              # Show this menu when this row selected
 #
 #        ... OR
 #
 #       command: "command %%KEY%% --cwd %%PWD"    # Run command, %%PWD will replaced with cwd
-#
+#       inputs:
+#         - KEY                       # This input will be replaced with '%%KEY%%' on command
+#       ------------------
 #       background: false             # Run command in background, popup will closed immediately
 #       close_after_command: true     # Close popup after command exited. if false, you should type <C-c> to close popup.
 #       border: none                  # Select popup border type, optional, possible options are: single, rounded, double, heavy, simple, padded, none
 #       session: false                # Run commmand in new session. Useful for long running command. To hide popup while command running, use <C-d> to detach and close.
 #       session_name: name            # Session name, which will be used if session is true. This must be unique.
-#       inputs:
-#         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:
 #         x: ...
 #         y: ...
