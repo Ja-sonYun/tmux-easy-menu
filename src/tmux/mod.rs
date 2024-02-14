@@ -21,6 +21,10 @@ impl Tmux {
         spawn_binary(self.binary.clone(), arguments, non_block)
     }
 
+    fn construct_border_arguments(border: &str) -> Vec<String> {
+        vec!["-b".to_string(), border.to_string()]
+    }
+
     fn construct_position_arguments(position: &Position) -> Vec<String> {
         if let (Some(w), Some(h)) = (position.w.clone(), position.h.clone()) {
             vec![

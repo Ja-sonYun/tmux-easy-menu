@@ -7,10 +7,6 @@ use anyhow::Result;
 static DISPLAY_POPUP: &str = "display-popup";
 
 impl Tmux {
-    fn construct_border_arguments(border: &str) -> Vec<String> {
-        vec!["-b".to_string(), border.to_string()]
-    }
-
     pub fn display_popup(
         &self,
         command: String,

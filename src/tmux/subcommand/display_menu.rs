@@ -47,6 +47,7 @@ impl Tmux {
         }
         arguments.append(&mut Self::construct_title_arguments(&menu.title));
         arguments.append(&mut Self::construct_position_arguments(&menu.position));
+        arguments.append(&mut Self::construct_border_arguments(&menu.border));
         arguments.push("".to_string()); // We have to add seperator here before menu items
         arguments.append(&mut Self::construct_menu_arguments(
             &menu.items,
