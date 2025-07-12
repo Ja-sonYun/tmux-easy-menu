@@ -49,6 +49,8 @@ items:
       border: none                  # Select popup border type, optional, possible options are: single, rounded, double, heavy, simple, padded, none
       session: false                # Run commmand in new session. Useful for long running command. To hide popup while command running, use <C-d> to detach and close.
       session_name: name            # Session name, which will be used if session is true. This must be unique.
+      session_on_dir: false         # Include directory path in session name
+      run_on_git_root: false        # Run command from git repository root instead of current directory
       position:
         x: ...
         y: ...

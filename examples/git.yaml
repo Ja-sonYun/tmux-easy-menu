@@ -13,6 +13,10 @@ items:
       name: "tig"
       shortcut: g
       command: tig
+      session: true
+      session_name: "tig-browser"
+      session_on_dir: true
+      run_on_git_root: true
 
       position:
         w: 80
@@ -28,10 +32,23 @@ items:
         h: 50
 
   - Menu:
+      name: "git status"
+      shortcut: s
+      command: "git status && echo '\nPress any key to continue...' && read"
+      run_on_git_root: true
+
+  - Menu:
+      name: "git log"
+      shortcut: l
+      command: "git log --oneline -20 && echo '\nPress any key to continue...' && read"
+      run_on_git_root: true
+
+  - Menu:
       name: "gh dash"
       shortcut: d
       command: echo "%%PWD"
       close_after_command: false
+      run_on_git_root: true
 
       position:
         w: 150

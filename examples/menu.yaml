@@ -31,6 +31,8 @@
 #       border: none                  # Select popup border type, optional
 #       session: false                # Run commmand in new session. Usefull for long running command.
 #       session_name: name            # Session name, which will be used if session is true. This must be unique.
+#       session_on_dir: false         # Use directory path as part of session name
+#       run_on_git_root: false        # Run command from git repository root instead of current directory
 #       inputs:
 #         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #       position:
@@ -60,7 +62,17 @@ items:
 
   - Menu:
       name: "aichat"
-      shortcut: n
-      command: "aichat -r shell"
+      shortcut: a
+      command: "sh"
       session: true
       session_name: aichat
+      session_on_dir: true
+      run_on_git_root: true
+
+  - Menu:
+      name: "terminal (git root)"
+      shortcut: t
+      command: "bash"
+      session: true
+      session_on_dir: true
+      run_on_git_root: true

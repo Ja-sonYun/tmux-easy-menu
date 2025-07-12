@@ -5,8 +5,11 @@ use crate::show::this::run_this_with;
 use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::hash_map::DefaultHasher;
 use std::fs::{canonicalize, File};
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::process::Command;
 
 fn default_none() -> Option<String> {
     None
@@ -50,6 +53,12 @@ pub enum MenuType {
 
         #[serde(default = "default_none")]
         session_name: Option<String>,
+
+        #[serde(default = "default_false")]
+        session_on_dir: bool,
+
+        #[serde(default = "default_false")]
+        run_on_git_root: bool,
 
         #[serde(default = "default_false")]
         background: bool,
@@ -113,6 +122,8 @@ impl MenuType {
                 position,
                 session,
                 session_name,
+                session_on_dir,
+                run_on_git_root,
                 border,
                 inputs,
                 ..
@@ -135,42 +146,77 @@ impl MenuType {
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
                 } else if let Some(command) = command {
-                    // Replace %%PWD with current directory, and escape double quotes
+                    let working_dir = if *run_on_git_root {
+                        Self::find_git_root(on_dir).unwrap_or_else(|| on_dir.clone())
+                    } else {
+                        on_dir.clone()
+                    };
+
+                    // Replace %%PWD with working directory, and escape double quotes
                     let command = command
                         .replace("\"", "\\\"")
-                        .replace("%%PWD", on_dir.to_str().unwrap());
+                        .replace("%%PWD", working_dir.to_str().unwrap());
                     if *background {
                         return Ok(format!(
                             "cd {} && {} &",
-                            on_dir.to_str().unwrap(),
+                            working_dir.to_str().unwrap(),
                             command.to_string(),
                         ));
                     }
                     wrapped_command.push("popup".to_string());
 
                     wrapped_command.push("--working_dir".to_string());
-                    wrapped_command.push(on_dir.to_str().unwrap().to_string());
+                    wrapped_command.push(working_dir.to_str().unwrap().to_string());
 
                     wrapped_command.push("--cmd".to_string());
                     // wrapped to move current directory before run command
                     if *session {
-                        let _session_name = if let Some(session_name) = session_name {
+                        let session_part = if let Some(session_name) = session_name {
                             session_name.to_string()
                         } else {
                             format!("session_{}", command.replace(" ", "_"))
                         };
+
+                        let base_session_name = if *session_on_dir {
+                            let dir_for_session = if *run_on_git_root {
+                                working_dir.clone()
+                            } else {
+                                on_dir.clone()
+                            };
+                            let full_path = dir_for_session
+                                .to_str()
+                                .unwrap_or("unknown")
+                                .replace("/", "_")
+                                .replace(" ", "_");
+                            format!("{}_{}", session_part, full_path)
+                        } else {
+                            session_part
+                        };
+
+                        let final_session_name = if *run_on_git_root {
+                            format!("git_root_{}", base_session_name)
+                        } else {
+                            base_session_name
+                        };
+
+                        let mut hasher = DefaultHasher::new();
+                        final_session_name.hash(&mut hasher);
+                        let hash_prefix = format!("{:x}", hasher.finish() % 0xFFFF);
+
+                        let _session_name = format!("{}_{}", hash_prefix, final_session_name);
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
-                            (tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
+                            (cd {working_dir} && tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
                             session = _session_name,
+                            working_dir = working_dir.to_str().unwrap(),
                             cmd = command
                         ));
                     } else {
                         wrapped_command.push(format!(
                             "cd {} && {}",
-                            on_dir.to_str().unwrap(),
+                            working_dir.to_str().unwrap(),
                             command
                         ));
                     }
@@ -196,6 +242,22 @@ impl MenuType {
 
                 run_this_with(on_dir, wrapped_command)
             }
+        }
+    }
+
+    fn find_git_root(start_dir: &PathBuf) -> Option<PathBuf> {
+        let output = Command::new("git")
+            .arg("rev-parse")
+            .arg("--show-toplevel")
+            .current_dir(start_dir)
+            .output()
+            .ok()?;
+
+        if output.status.success() {
+            let git_root = String::from_utf8(output.stdout).ok()?;
+            Some(PathBuf::from(git_root.trim()))
+        } else {
+            None
         }
     }
 }
