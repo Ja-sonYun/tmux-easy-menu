@@ -3,6 +3,7 @@ use crate::shell::run_command;
 use crate::show::construct_position::Position;
 use crate::show::this::run_this_with;
 use anyhow::{bail, Result};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
@@ -205,14 +206,15 @@ impl MenuType {
 
                         let _session_name =
                             format!("_popup_{}_{}", hash_prefix, final_session_name);
+                        let encoded_cmd = STANDARD.encode(&command);
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
-                            (cd {working_dir} && tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
+                            (cd {working_dir} && tmux new-session -d -s {session} \\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
                             session = _session_name,
                             working_dir = working_dir.to_str().unwrap(),
-                            cmd = command
+                            encoded_cmd = encoded_cmd
                         ));
                     } else {
                         wrapped_command.push(format!(

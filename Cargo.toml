@@ -18,6 +18,7 @@ github = { repository = "Ja-sonYun/tmux-easy-menu", workflow = "Rust" }
 
 [dependencies]
 anyhow = "1.0.68"
+base64 = "0.22.1"
 clap = { version = "4.1.1", features = ["derive"] }
 ctrlc = "3.2.4"
 libc = "0.2.139"
