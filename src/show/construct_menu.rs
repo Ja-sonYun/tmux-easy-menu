@@ -203,7 +203,8 @@ impl MenuType {
                         final_session_name.hash(&mut hasher);
                         let hash_prefix = format!("{:x}", hasher.finish() % 0xFFFF);
 
-                        let _session_name = format!("_{}_{}", hash_prefix, final_session_name);
+                        let _session_name =
+                            format!("_popup_{}_{}", hash_prefix, final_session_name);
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
                             (cd {working_dir} && tmux new-session -d -s {session} \\\"{cmd}\\\" 2>/dev/null && \
