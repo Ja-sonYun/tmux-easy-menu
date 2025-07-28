@@ -61,18 +61,14 @@ items:
       next_menu: "./network.yaml"
 
   - Menu:
-      name: "aichat"
-      shortcut: a
-      command: "sh"
-      session: true
-      session_name: aichat
-      session_on_dir: true
-      run_on_git_root: true
-
-  - Menu:
-      name: "terminal (git root)"
+      name: "terminal"
       shortcut: t
       command: "bash"
       session: true
       session_on_dir: true
       run_on_git_root: true
+      environment:
+        MY_VAR: "Hello World"
+      position:
+        w: 80
+        h: 50

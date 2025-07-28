@@ -7,6 +7,7 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::DefaultHasher;
+use std::collections::HashMap;
 use std::fs::{canonicalize, File};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -30,6 +31,10 @@ fn default_vec() -> Vec<String> {
 
 fn default_empty_string() -> String {
     "".to_string()
+}
+
+fn default_hashmap() -> HashMap<String, String> {
+    HashMap::new()
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -72,6 +77,9 @@ pub enum MenuType {
 
         #[serde(default = "default_none")]
         border: Option<String>,
+
+        #[serde(default = "default_hashmap")]
+        environment: HashMap<String, String>,
     },
     NoDim {
         name: String,
@@ -127,6 +135,7 @@ impl MenuType {
                 run_on_git_root,
                 border,
                 inputs,
+                environment,
                 ..
             } => {
                 let mut wrapped_command: Vec<String> = Vec::new();
@@ -157,12 +166,34 @@ impl MenuType {
                     let command = command
                         .replace("\"", "\\\"")
                         .replace("%%PWD", working_dir.to_str().unwrap());
+
                     if *background {
-                        return Ok(format!(
-                            "cd {} && {} &",
-                            working_dir.to_str().unwrap(),
-                            command.to_string(),
-                        ));
+                        // For background commands, set environment variables before running
+                        if environment.is_empty() {
+                            return Ok(format!(
+                                "cd {} && {}",
+                                working_dir.to_str().unwrap(),
+                                command
+                            ));
+                        } else {
+                            // Set tmux environment variables AND export them for background commands
+                            let env_setup = environment
+                                .iter()
+                                .map(|(k, v)| {
+                                    format!(
+                                        "tmux set-environment {} '{}' && export {}='{}'",
+                                        k, v, k, v
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" && ");
+                            return Ok(format!(
+                                "{} && cd {} && {}",
+                                env_setup,
+                                working_dir.to_str().unwrap(),
+                                command
+                            ));
+                        }
                     }
                     wrapped_command.push("popup".to_string());
 
@@ -207,21 +238,56 @@ impl MenuType {
                         let _session_name =
                             format!("_popup_{}_{}", hash_prefix, final_session_name);
                         let encoded_cmd = STANDARD.encode(&command);
+
+                        // Build environment flags for new-session
+                        let env_flags = if environment.is_empty() {
+                            String::new()
+                        } else {
+                            environment
+                                .iter()
+                                .map(|(k, v)| format!("-e {}='{}'", k, v))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                                + " "
+                        };
+
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
-                            (cd {working_dir} && tmux new-session -d -s {session} \\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
+                            (cd {working_dir} && tmux new-session -d -s {session} {env_flags}\\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
                             session = _session_name,
                             working_dir = working_dir.to_str().unwrap(),
-                            encoded_cmd = encoded_cmd
+                            encoded_cmd = encoded_cmd,
+                            env_flags = env_flags
                         ));
                     } else {
-                        wrapped_command.push(format!(
-                            "cd {} && {}",
-                            working_dir.to_str().unwrap(),
-                            command
-                        ));
+                        // For regular popup commands, set environment variables before running
+                        if environment.is_empty() {
+                            wrapped_command.push(format!(
+                                "cd {} && {}",
+                                working_dir.to_str().unwrap(),
+                                command
+                            ));
+                        } else {
+                            // Set tmux environment variables AND export them for regular commands
+                            let env_setup = environment
+                                .iter()
+                                .map(|(k, v)| {
+                                    format!(
+                                        "tmux set-environment {} '{}' && export {}='{}'",
+                                        k, v, k, v
+                                    )
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" && ");
+                            wrapped_command.push(format!(
+                                "{} && cd {} && {}",
+                                env_setup,
+                                working_dir.to_str().unwrap(),
+                                command
+                            ));
+                        }
                     }
 
                     wrapped_command.extend(position.as_this_arguments());

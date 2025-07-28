@@ -51,6 +51,9 @@ items:
       session_name: name            # Session name, which will be used if session is true. This must be unique.
       session_on_dir: false         # Include directory path in session name
       run_on_git_root: false        # Run command from git repository root instead of current directory
+      environment:                  # Set environment variables for command execution
+        MY_VAR: "value"
+        ANOTHER_VAR: "another value"
       position:
         x: ...
         y: ...
@@ -106,3 +109,21 @@ and add menu item as below
       command: "$PATH_TO_SCRIPT/generate_brew_services_restart_menu.sh"
       background: true
 ```
+
+#### Environment Variables
+You can set environment variables that will be available when your commands execute:
+
+```yaml
+  - Menu:
+      name: "run with env vars"
+      shortcut: e
+      command: "echo $MY_VAR && echo $PATH_VAR"
+      environment:
+        MY_VAR: "Hello World"
+        PATH_VAR: "/custom/path"
+```
+
+Environment variables work with all execution modes:
+- Regular commands: Variables are exported before command execution
+- Session commands: Variables are set in the new tmux session
+- Background commands: Variables are available to the background process

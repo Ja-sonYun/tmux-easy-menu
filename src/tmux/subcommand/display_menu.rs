@@ -4,6 +4,7 @@ use std::process::Child;
 use crate::show::construct_menu::{MenuType, Menus};
 use crate::tmux::Tmux;
 use anyhow::Result;
+use base64::Engine as _;
 
 static DISPLAY_MENU: &str = "display-menu";
 
@@ -16,14 +17,16 @@ impl Tmux {
         menu_items
             .iter()
             .map(|menu| match menu {
-                MenuType::Menu { name, shortcut, .. } => vec![
-                    name.clone(),
-                    shortcut.clone(),
-                    format!(
-                        "run -b '{}'",
-                        menu.get_execute_command(prev_path, cwd).unwrap()
-                    ),
-                ],
+                MenuType::Menu { name, shortcut, .. } => {
+                    let command = menu.get_execute_command(prev_path, cwd).unwrap();
+                    // Base64 encode the command to avoid quote escaping issues
+                    let encoded_command = base64::engine::general_purpose::STANDARD.encode(&command);
+                    vec![
+                        name.clone(),
+                        shortcut.clone(),
+                        format!("run -b 'echo {} | base64 -d | sh'", encoded_command),
+                    ]
+                },
                 MenuType::NoDim { name } => {
                     vec![format!("-#[nodim]{}", name), "".to_string(), "".to_string()]
                 }
