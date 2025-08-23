@@ -1,117 +1,94 @@
-# tmux-easy-menu v0.1.15
+# tmux-easy-menu
 
-### Easy configurable tmux display-menu
+Easy configurable menus and popups for tmux.
 
-![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/example.gif?raw=true)
+![example](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/example.gif?raw=true)
 
-## Setup
-```
+## Installation
+
+```bash
 cargo install tmux-menu
 ```
 
+## Quick start
 
-## Configuration
-To see more actual config files, checkout `./examples` folder.
+Bind a key in your `~/.tmux.conf` to show a menu:
+
+```tmux
+bind-key k run-shell "tmux-menu show --menu $HOME/.config/tmux-menu/menu.yaml --working_dir #{pane_current_path}"
+```
+
+Create `~/.config/tmux-menu/menu.yaml`:
+
 ```yaml
-# On tmux.conf, add below line.
-#
-# bind-key k run-shell "tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
-#                      
-# =============================
-#
-title: "..."
-border: "rounded"                   # Optional, possible options are: single, rounded, double, heavy, simple, padded, none
-position:
-  x: ...
-  y: ...
-
+title: " menu "
 items:
-  - Seperate: {}                    # Draw seperate line
+  - Menu:
+      name: "git"
+      shortcut: g
+      next_menu: "./git.yaml"
+  - Menu:
+      name: "terminal"
+      shortcut: t
+      command: "bash"
+      session: true
+      session_on_dir: true
+      run_on_git_root: true
+  - NoDim:
+      name: "User: $(whoami)"
+  - Seperate: {}
+```
 
-  - NoDim:                          # Add row, but unselectable
-      name: "..."
+Reload tmux and press <prefix>+k to see the menu.  Additional menu files can be
+placed in the same directory and referenced with `next_menu`.
 
-  - Menu:                           # Add selectable row
-      name: "..."
-      shortcut: "..."               # Optional
-#     ------------------
-      # You can define next_menu or command
-      next_menu: "..."              # Show this menu when this row selected
+## Menu file format
 
-#       ... OR
+Each menu file is a YAML document with the following structure:
 
-      command: "command %%KEY%% --cwd %%PWD"    # Run command, %%PWD will replaced with cwd
-      inputs:
-        - KEY                       # This input will be replaced with '%%KEY%%' on command
-#     ------------------
-      background: false             # Run command in background, popup will closed immediately
-      close_after_command: true     # Close popup after command exited. if false, you should type <C-c> to close popup.
-      border: none                  # Select popup border type, optional, possible options are: single, rounded, double, heavy, simple, padded, none
-      session: false                # Run commmand in new session. Useful for long running command. To hide popup while command running, use <C-d> to detach and close.
-      session_name: name            # Session name, which will be used if session is true. This must be unique.
-      session_on_dir: false         # Include directory path in session name
-      run_on_git_root: false        # Run command from git repository root instead of current directory
-      environment:                  # Set environment variables for command execution
+```yaml
+title: " menu "           # Title shown at the top
+border: "single"          # Default border style (single, rounded, double, heavy, simple, padded, none)
+position:                 # Default menu position
+  x: 0
+  y: 0
+items:                     # List of rows in the menu
+  - Menu:
+      name: "label"       # Text shown in the menu. $(cmd) is evaluated when the menu loads
+      shortcut: "k"       # Optional key binding
+      command: "echo hi"  # Command to execute
+      next_menu: "path"    # Alternatively show another menu file
+      background: false    # Run command in background
+      close_after_command: true
+      session: false       # Run command in a new tmux session
+      session_name: "name"
+      session_on_dir: false  # Include directory path in session name
+      run_on_git_root: false # Execute command from git repo root
+      inputs: [KEY]       # Prompt for KEY and replace %%KEY%% in command
+      environment:        # Extra environment variables
         MY_VAR: "value"
-        ANOTHER_VAR: "another value"
-      position:
-        x: ...
-        y: ...
-        w: ...
-        h: ...
+      position:           # Override popup position
+        x: 0
+        y: 0
+        w: 80
+        h: 20
+      border: "rounded"  # Override border style
+  - NoDim:                 # Non‑selectable line of text
+      name: "..."
+  - Seperate: {}          # Horizontal separator
 ```
 
-#### Dynamic menu
-![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic2.gif?raw=true)
-![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic.gif?raw=true)
-Below example will show running brew services on display-menu, and restart it if clicked.
-```bash
-#!/bin/bash
-# generate_brew_services_restart_menu.sh
+### Dynamic labels
+Names can include `$(command)` expressions which are executed when the menu
+loads and replaced with the command output.
 
-TEMP_MENU_FILE="/tmp/temp_menu.yaml"
-rm -f $TEMP_MENU_FILE
-cat > $TEMP_MENU_FILE << EOM
-title: " brew services "
-items:
-  - Seperate: {}
-  - NoDim:
-      name: " Running services "
-  - NoDim:
-      name: " (select to restart) "
-  - Seperate: {}
-EOM
+### Inputs and placeholders
+Use the `inputs` array to ask the user for values before running a command.  The
+values are substituted into the command where `%%KEY%%` tokens appear.
 
-brew services list | while read line
-do
-    program=$(echo $line | awk '{print $1}')
-    status=$(echo $line | awk '{print $2}')
-
-    if [ "$status" == "started" ]; then
-        cat >> $TEMP_MENU_FILE <<- EOM
-  - Menu:
-      name: "$program"
-      shortcut: ".."
-      command: "brew services restart $program"
-      background: true
-EOM
-    fi
-done
-
-tmux-menu show --menu $TEMP_MENU_FILE
-rm -f $TEMP_MENU_FILE
-```
-and add menu item as below
-```yaml
-  - Menu:
-      name: "restart brew services"
-      shortcut: b
-      command: "$PATH_TO_SCRIPT/generate_brew_services_restart_menu.sh"
-      background: true
-```
-
-#### Environment Variables
-You can set environment variables that will be available when your commands execute:
+### Environment variables
+Environment variables defined in an item are available to commands, background
+processes and new sessions:
 
 ```yaml
   - Menu:
@@ -124,6 +101,77 @@ You can set environment variables that will be available when your commands exec
 ```
 
 Environment variables work with all execution modes:
-- Regular commands: Variables are exported before command execution
-- Session commands: Variables are set in the new tmux session
-- Background commands: Variables are available to the background process
+
+- Regular commands: variables are exported before command execution
+- Session commands: variables are set in the new tmux session
+- Background commands: variables are available to the background process
+
+## Dynamic menus
+
+Menus can be generated on the fly.  The script below lists running `brew`
+services and creates a menu to restart them:
+
+```bash
+#!/bin/bash
+TEMP_MENU_FILE="/tmp/temp_menu.yaml"
+rm -f "$TEMP_MENU_FILE"
+cat > "$TEMP_MENU_FILE" <<'EOM'
+title: " brew services "
+items:
+  - Seperate: {}
+  - NoDim:
+      name: " Running services "
+  - NoDim:
+      name: " (select to restart) "
+  - Seperate: {}
+EOM
+
+brew services list | while read -r line; do
+    program=$(echo "$line" | awk '{print $1}')
+    status=$(echo "$line" | awk '{print $2}')
+    if [ "$status" = "started" ]; then
+        cat >> "$TEMP_MENU_FILE" <<-EOM
+  - Menu:
+      name: "$program"
+      shortcut: ".."
+      command: "brew services restart $program"
+      background: true
+EOM
+    fi
+done
+
+tmux-menu show --menu "$TEMP_MENU_FILE"
+rm -f "$TEMP_MENU_FILE"
+```
+
+Add an item in your main menu to call this script:
+
+```yaml
+  - Menu:
+      name: "restart brew services"
+      shortcut: b
+      command: "$PATH_TO_SCRIPT/generate_brew_services_restart_menu.sh"
+      background: true
+```
+
+## Popup command
+
+`tmux-menu` also provides a small helper to show popups and gather input without
+a menu definition:
+
+```bash
+tmux-menu popup \
+  --cmd "echo hi && read" \
+  --x 10 --y 10 --w 40 --h 10 \
+  --border rounded \
+  --key NAME \
+  --working_dir .
+```
+
+The command prompts for `NAME`, substitutes it into the command as `%%NAME%%` and
+displays the result in a tmux popup.
+
+## Examples
+
+See the [`examples`](examples) directory for more configuration samples and
+animated demos.
