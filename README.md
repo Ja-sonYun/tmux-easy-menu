@@ -1,8 +1,20 @@
 # tmux-easy-menu
 
-Easy configurable menus and popups for tmux.
+**tmux-easy-menu** provides a small `tmux-menu` binary that lets you build rich
+interactive menus and popups inside tmux using simple YAML files.  Commands run
+in the current pane by default, but you can also spawn new sessions or run tasks
+in the background without touching tmux scripting.
 
-![example](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/example.gif?raw=true)
+![demo](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/example.gif?raw=true)
+
+## Features
+- Declarative YAML menus with nested sub‑menus
+- Run commands, background jobs or new tmux sessions
+- Dynamic labels with `$(command)` substitution
+- Prompt for user input and inject values into commands
+- Per‑item environment variables, borders and positions
+- Generate menus at runtime
+- Standalone popup helper for one‑off prompts
 
 ## Installation
 
@@ -11,20 +23,16 @@ cargo install tmux-menu
 ```
 
 ## Quick start
-
-Bind a key in your `~/.tmux.conf` to show a menu:
-
-```tmux
-bind-key k run-shell "tmux-menu show --menu $HOME/.config/tmux-menu/menu.yaml --working_dir #{pane_current_path}"
-```
-
-Create `~/.config/tmux-menu/menu.yaml`:
-
-```yaml
+1. Bind a key in `~/.tmux.conf`:
+   ```tmux
+   bind-key k run-shell "tmux-menu show --menu $HOME/.config/tmux-menu/menu.yaml --working_dir #{pane_current_path}"
+   ```
+2. Create `~/.config/tmux-menu/menu.yaml`:
+   ```yaml
 title: " menu "
 items:
   - Menu:
-      name: "git"
+      name: "git tools"
       shortcut: g
       next_menu: "./git.yaml"
   - Menu:
@@ -32,132 +40,96 @@ items:
       shortcut: t
       command: "bash"
       session: true
-      session_on_dir: true
-      run_on_git_root: true
   - NoDim:
       name: "User: $(whoami)"
   - Seperate: {}
-```
+   ```
+3. Reload tmux and press `<prefix>+k`.
 
-Reload tmux and press <prefix>+k to see the menu.  Additional menu files can be
-placed in the same directory and referenced with `next_menu`.
-
-## Menu file format
-
-Each menu file is a YAML document with the following structure:
+## Menu files
+A menu file is a YAML document:
 
 ```yaml
-title: " menu "           # Title shown at the top
-border: "single"          # Default border style (single, rounded, double, heavy, simple, padded, none)
-position:                 # Default menu position
+title: " title "
+border: rounded
+position:
   x: 0
   y: 0
-items:                     # List of rows in the menu
+items:
   - Menu:
-      name: "label"       # Text shown in the menu. $(cmd) is evaluated when the menu loads
-      shortcut: "k"       # Optional key binding
-      command: "echo hi"  # Command to execute
-      next_menu: "path"    # Alternatively show another menu file
-      background: false    # Run command in background
+      name: "run command"
+      shortcut: r
+      command: "echo hi"
+      background: false
       close_after_command: true
-      session: false       # Run command in a new tmux session
+      session: false
       session_name: "name"
-      session_on_dir: false  # Include directory path in session name
-      run_on_git_root: false # Execute command from git repo root
-      inputs: [KEY]       # Prompt for KEY and replace %%KEY%% in command
-      environment:        # Extra environment variables
-        MY_VAR: "value"
-      position:           # Override popup position
+      session_on_dir: false
+      run_on_git_root: false
+      inputs: [KEY]
+      environment:
+        FOO: bar
+      position:
         x: 0
         y: 0
         w: 80
         h: 20
-      border: "rounded"  # Override border style
-  - NoDim:                 # Non‑selectable line of text
-      name: "..."
-  - Seperate: {}          # Horizontal separator
+      border: single
+  - NoDim:
+      name: "label"
+  - Seperate: {}
 ```
+
+### Item types
+- **Menu** – selectable entry that runs a command or shows `next_menu`
+- **NoDim** – non‑selectable text line
+- **Seperate** – horizontal separator
 
 ### Dynamic labels
-Names can include `$(command)` expressions which are executed when the menu
-loads and replaced with the command output.
+Values in `name` may include `$(cmd)` which executes when the menu loads.
 
-### Inputs and placeholders
-Use the `inputs` array to ask the user for values before running a command.  The
-values are substituted into the command where `%%KEY%%` tokens appear.
+### Inputs and variables
+Use `inputs` to prompt for values.  The entered text replaces `%%KEY%%` tokens in
+the command.  The `environment` map exports variables for commands, sessions and
+background tasks.
 
-### Environment variables
-Environment variables defined in an item are available to commands, background
-processes and new sessions:
-
-```yaml
-  - Menu:
-      name: "run with env vars"
-      shortcut: e
-      command: "echo $MY_VAR && echo $PATH_VAR"
-      environment:
-        MY_VAR: "Hello World"
-        PATH_VAR: "/custom/path"
-```
-
-Environment variables work with all execution modes:
-
-- Regular commands: variables are exported before command execution
-- Session commands: variables are set in the new tmux session
-- Background commands: variables are available to the background process
+### Borders and position
+`border` accepts `single`, `rounded`, `double`, `heavy`, `simple`, `padded` or
+`none`.  `position` sets popup location and size (`x`, `y`, `w`, `h`).
 
 ## Dynamic menus
-
 Menus can be generated on the fly.  The script below lists running `brew`
 services and creates a menu to restart them:
 
 ```bash
 #!/bin/bash
-TEMP_MENU_FILE="/tmp/temp_menu.yaml"
-rm -f "$TEMP_MENU_FILE"
-cat > "$TEMP_MENU_FILE" <<'EOM'
+TEMP_MENU="/tmp/temp_menu.yaml"
+cat > "$TEMP_MENU" <<'EOM'
 title: " brew services "
 items:
   - Seperate: {}
-  - NoDim:
-      name: " Running services "
-  - NoDim:
-      name: " (select to restart) "
+  - NoDim: {name: " Running services "}
+  - NoDim: {name: " (select to restart) "}
   - Seperate: {}
 EOM
 
-brew services list | while read -r line; do
-    program=$(echo "$line" | awk '{print $1}')
-    status=$(echo "$line" | awk '{print $2}')
-    if [ "$status" = "started" ]; then
-        cat >> "$TEMP_MENU_FILE" <<-EOM
+brew services list | awk '$2=="started"{print $1}' | while read svc; do
+  cat >> "$TEMP_MENU" <<EOM
   - Menu:
-      name: "$program"
-      shortcut: ".."
-      command: "brew services restart $program"
+      name: "$svc"
+      command: "brew services restart $svc"
       background: true
 EOM
-    fi
 done
 
-tmux-menu show --menu "$TEMP_MENU_FILE"
-rm -f "$TEMP_MENU_FILE"
+tmux-menu show --menu "$TEMP_MENU"
+rm -f "$TEMP_MENU"
 ```
 
-Add an item in your main menu to call this script:
+Add an item to your main menu to call this script and show the generated menu.
 
-```yaml
-  - Menu:
-      name: "restart brew services"
-      shortcut: b
-      command: "$PATH_TO_SCRIPT/generate_brew_services_restart_menu.sh"
-      background: true
-```
-
-## Popup command
-
-`tmux-menu` also provides a small helper to show popups and gather input without
-a menu definition:
+## Popup helper
+Display a popup without writing a menu file:
 
 ```bash
 tmux-menu popup \
@@ -168,10 +140,12 @@ tmux-menu popup \
   --working_dir .
 ```
 
-The command prompts for `NAME`, substitutes it into the command as `%%NAME%%` and
-displays the result in a tmux popup.
+The command prompts for `NAME`, substitutes it into the command as `%%NAME%%`
+and shows the result in a tmux popup.
 
 ## Examples
+More demos and sample configurations live in the [`examples`](examples) folder.
 
-See the [`examples`](examples) directory for more configuration samples and
-animated demos.
+## License
+MIT
+
