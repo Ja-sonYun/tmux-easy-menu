@@ -118,7 +118,13 @@ impl MenuType {
         }
     }
 
-    pub fn get_execute_command(&self, path: &PathBuf, on_dir: &PathBuf) -> Result<String> {
+    pub fn get_execute_command(
+        &self,
+        path: &PathBuf,
+        on_dir: &PathBuf,
+        cli_x: Option<&str>,
+        cli_y: Option<&str>,
+    ) -> Result<String> {
         match self {
             MenuType::NoDim { .. } | MenuType::Seperate { .. } => {
                 bail!("This menu type should be menu")
@@ -155,6 +161,16 @@ impl MenuType {
 
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(on_dir.to_str().unwrap().to_string());
+
+                    if let Some(x) = cli_x {
+                        wrapped_command.push("--x".to_string());
+                        wrapped_command.push(x.to_string());
+                    }
+
+                    if let Some(y) = cli_y {
+                        wrapped_command.push("--y".to_string());
+                        wrapped_command.push(y.to_string());
+                    }
                 } else if let Some(command) = command {
                     let working_dir = if *run_on_git_root {
                         Self::find_git_root(on_dir).unwrap_or_else(|| on_dir.clone())
@@ -290,7 +306,14 @@ impl MenuType {
                         }
                     }
 
-                    wrapped_command.extend(position.as_this_arguments());
+                    let mut effective_position = position.clone();
+                    if let Some(x) = cli_x {
+                        effective_position.x = x.to_string();
+                    }
+                    if let Some(y) = cli_y {
+                        effective_position.y = y.to_string();
+                    }
+                    wrapped_command.extend(effective_position.as_this_arguments());
 
                     wrapped_command.push("--border".to_string());
                     if let Some(border) = border {
@@ -343,6 +366,12 @@ pub struct Menus {
     #[serde(skip)]
     pub cwd: PathBuf,
 
+    #[serde(skip)]
+    pub cli_x: Option<String>,
+
+    #[serde(skip)]
+    pub cli_y: Option<String>,
+
     #[serde(default = "Position::new_xy")]
     pub position: Position,
 
@@ -359,6 +388,8 @@ impl Menus {
         let mut menus: Menus = serde_yaml::from_reader(file)?;
         menus.conf_path = path;
         menus.cwd = cwd;
+        menus.cli_x = None;
+        menus.cli_y = None;
 
         for menu in &mut menus.items {
             menu.eval_name();

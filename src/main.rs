@@ -33,6 +33,8 @@ fn cli() -> Command {
                         .required(false)
                         .default_value("."),
                 )
+                .arg(arg!(-x --x <X> "X position for display-menu").required(false))
+                .arg(arg!(-y --y <Y> "Y position for display-menu").required(false))
                 .arg(arg!(-v --verbose ... "Verbose mode"))
                 .arg_required_else_help(true),
         )
@@ -40,8 +42,8 @@ fn cli() -> Command {
             Command::new("popup")
                 .about("Show popup")
                 .arg(arg!(--cmd <CMD> "Command to run"))
-                .arg(arg!(--x <X> "X position"))
-                .arg(arg!(--y <Y> "Y position"))
+                .arg(arg!(-x --x <X> "X position"))
+                .arg(arg!(-y --y <Y> "Y position"))
                 .arg(arg!(--w <W> "Width"))
                 .arg(arg!(--h <H> "Height"))
                 .arg(arg!(--border <BORDER> "Border"))
@@ -83,7 +85,18 @@ fn main() -> Result<()> {
             let path = PathBuf::from(sub_matches.get_one::<String>("menu").unwrap());
             let verbose = sub_matches.get_one::<u8>("verbose").unwrap();
 
-            let menus = Menus::load(path, working_dir).expect("Failed to load menus");
+            let mut menus = Menus::load(path, working_dir).expect("Failed to load menus");
+
+            if let Some(x) = sub_matches.get_one::<String>("x") {
+                let x = x.to_string();
+                menus.position.x = x.clone();
+                menus.cli_x = Some(x);
+            }
+            if let Some(y) = sub_matches.get_one::<String>("y") {
+                let y = y.to_string();
+                menus.position.y = y.clone();
+                menus.cli_y = Some(y);
+            }
             let tmux = Tmux::new();
 
             tmux.display_menu(&menus, verbose)?;

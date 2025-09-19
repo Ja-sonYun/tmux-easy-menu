@@ -2,7 +2,7 @@ use crate::tmux::positions::{bottom, right};
 use serde::{Deserialize, Serialize};
 use std::option::Option;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Position {
     #[serde(default = "right")]
     pub x: String,
