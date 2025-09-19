@@ -116,6 +116,14 @@ fn main() -> Result<()> {
                 .expect("CMD is required")
                 .to_string();
 
+            let x = sub_matches.get_one::<String>("x").unwrap().clone();
+            let y = sub_matches.get_one::<String>("y").unwrap().clone();
+            let w = Some(sub_matches.get_one::<String>("w").unwrap().clone());
+            let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
+            let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
+
+            let position = Position { x, y, w, h };
+
             if !keys.is_empty() {
                 // create pipe
                 pipe::create()?;
@@ -130,7 +138,7 @@ fn main() -> Result<()> {
 
                 tmux.display_popup(
                     cmd_to_run_input_of_this,
-                    &Position::wh(50, 3),
+                    &position,
                     &border,
                     true,
                 )
@@ -157,15 +165,9 @@ fn main() -> Result<()> {
                 cmd
             );
 
-            let x = sub_matches.get_one::<String>("x").unwrap().clone();
-            let y = sub_matches.get_one::<String>("y").unwrap().clone();
-            let w = Some(sub_matches.get_one::<String>("w").unwrap().clone());
-            let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
-            let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
-
             pipe::remove()?;
 
-            tmux.display_popup(cmd, &Position { x, y, w, h }, &border, e)
+            tmux.display_popup(cmd, &position, &border, e)
                 .expect("Failed to display popup");
         }
         Some(("input", sub_matches)) => {
