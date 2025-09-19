@@ -1,6 +1,6 @@
 [package]
 name = "tmux-menu"
-version = "0.1.15"
+version = "0.1.16"
 edition = "2021"
 author = ["Ja-sonYun <killa30867@gmail.com>"]
 
