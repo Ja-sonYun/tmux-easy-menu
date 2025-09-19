@@ -108,44 +108,48 @@ fn main() -> Result<()> {
                 sub_matches.get_one::<String>("working_dir").unwrap(),
             ))?;
 
-            // create pipe
-            pipe::create()?;
-
-            let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
-            base_arguments.extend(get_inputs(sub_matches.get_many::<String>("key")));
-            let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
-
-            // Trying to receive the input
-            let (tx, rx) = channel::<()>();
-            let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
-
             let border = sub_matches.get_one::<String>("border").unwrap().clone();
-
-            tmux.display_popup(
-                cmd_to_run_input_of_this,
-                &Position::wh(50, 3),
-                &border,
-                true,
-            )
-            .expect("Failed to run command");
-
-            // Send the signal to stop reading
-            let _ = tx.send(());
-
-            let result = reader.join().expect("Failed to join reader thread");
-
-            if result == "" {
-                return Ok(());
-            }
+            let keys = get_inputs(sub_matches.get_many::<String>("key"));
 
             let mut cmd = sub_matches
                 .get_one::<String>("cmd")
                 .expect("CMD is required")
                 .to_string();
 
-            let received_inputs: HashMap<String, String> = serde_yaml::from_str(&result)?;
-            for (key, value) in received_inputs {
-                cmd = cmd.replace(&format!("%%{}%%", key), &value);
+            if !keys.is_empty() {
+                // create pipe
+                pipe::create()?;
+
+                let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
+                base_arguments.extend(keys);
+                let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
+
+                // Trying to receive the input
+                let (tx, rx) = channel::<()>();
+                let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
+
+                tmux.display_popup(
+                    cmd_to_run_input_of_this,
+                    &Position::wh(50, 3),
+                    &border,
+                    true,
+                )
+                .expect("Failed to run command");
+
+                // Send the signal to stop reading
+                let _ = tx.send(());
+
+                let result = reader.join().expect("Failed to join reader thread");
+
+                if result == "" {
+                    pipe::remove()?;
+                    return Ok(());
+                }
+
+                let received_inputs: HashMap<String, String> = serde_yaml::from_str(&result)?;
+                for (key, value) in received_inputs {
+                    cmd = cmd.replace(&format!("%%{}%%", key), &value);
+                }
             }
             cmd = format!(
                 "cd {} && {}",
