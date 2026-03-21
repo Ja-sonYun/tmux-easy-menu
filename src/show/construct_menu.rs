@@ -1,4 +1,4 @@
-use crate::shell::run_command;
+use crate::shell::{run_command, shell_quote};
 
 use crate::show::construct_position::Position;
 use crate::show::this::run_this_with;
@@ -177,6 +177,7 @@ impl MenuType {
                     } else {
                         on_dir.clone()
                     };
+                    let quoted_working_dir = shell_quote(working_dir.to_str().unwrap());
 
                     // Replace %%PWD with working directory, and escape double quotes
                     let command = command
@@ -188,7 +189,7 @@ impl MenuType {
                         if environment.is_empty() {
                             return Ok(format!(
                                 "cd {} && {}",
-                                working_dir.to_str().unwrap(),
+                                quoted_working_dir,
                                 command
                             ));
                         } else {
@@ -206,7 +207,7 @@ impl MenuType {
                             return Ok(format!(
                                 "{} && cd {} && {}",
                                 env_setup,
-                                working_dir.to_str().unwrap(),
+                                quoted_working_dir,
                                 command
                             ));
                         }
@@ -273,7 +274,7 @@ impl MenuType {
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
                             session = _session_name,
-                            working_dir = working_dir.to_str().unwrap(),
+                            working_dir = quoted_working_dir,
                             encoded_cmd = encoded_cmd,
                             env_flags = env_flags
                         ));
@@ -282,7 +283,7 @@ impl MenuType {
                         if environment.is_empty() {
                             wrapped_command.push(format!(
                                 "cd {} && {}",
-                                working_dir.to_str().unwrap(),
+                                quoted_working_dir,
                                 command
                             ));
                         } else {
@@ -300,7 +301,7 @@ impl MenuType {
                             wrapped_command.push(format!(
                                 "{} && cd {} && {}",
                                 env_setup,
-                                working_dir.to_str().unwrap(),
+                                quoted_working_dir,
                                 command
                             ));
                         }

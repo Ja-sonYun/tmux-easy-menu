@@ -1,6 +1,10 @@
 use anyhow::Result;
 use std::process::{Child, Command};
 
+pub fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
 pub fn run_command(command: String) -> Result<String> {
     let output = Command::new("sh").arg("-c").arg(command).output()?;
 

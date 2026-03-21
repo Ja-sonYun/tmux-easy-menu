@@ -1,3 +1,4 @@
+use crate::shell::shell_quote;
 use anyhow::Result;
 use std::env::current_exe;
 use std::path::PathBuf;
@@ -24,7 +25,7 @@ pub fn run_this_with(on_dir: &PathBuf, args: Vec<String>) -> Result<String> {
     // TODO: Unwrap quote
     Ok(format!(
         "cd {} && {} {}",
-        on_dir.to_str().unwrap(),
+        shell_quote(on_dir.to_str().unwrap()),
         this_binary.to_str().unwrap(),
         parse_arguments(args)?
     ))

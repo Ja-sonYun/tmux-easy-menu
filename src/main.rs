@@ -7,6 +7,7 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
+use shell::shell_quote;
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -161,7 +162,7 @@ fn main() -> Result<()> {
             }
             cmd = format!(
                 "cd {} && {}",
-                working_dir.to_str().unwrap().to_string(),
+                shell_quote(working_dir.to_str().unwrap()),
                 cmd
             );
 
