@@ -273,7 +273,7 @@ impl MenuType {
 
                         wrapped_command.push(format!(
                             "tmux attach -t {session} 2>/dev/null || \
-                            (cd {working_dir} && tmux new-session -d -s {session} {env_flags}\\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
+                            (tmux new-session -d -c {working_dir} -s {session} {env_flags}\\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
                             session = quoted_session,
@@ -284,11 +284,7 @@ impl MenuType {
                     } else {
                         // For regular popup commands, set environment variables before running
                         if environment.is_empty() {
-                            wrapped_command.push(format!(
-                                "cd {} && {}",
-                                shell_quote(working_dir.to_str().unwrap()),
-                                command
-                            ));
+                            wrapped_command.push(command.to_string());
                         } else {
                             // Set tmux environment variables AND export them for regular commands
                             let env_setup = environment
@@ -304,12 +300,7 @@ impl MenuType {
                                 })
                                 .collect::<Vec<_>>()
                                 .join(" && ");
-                            wrapped_command.push(format!(
-                                "{} && cd {} && {}",
-                                env_setup,
-                                shell_quote(working_dir.to_str().unwrap()),
-                                command
-                            ));
+                            wrapped_command.push(format!("{} && {}", env_setup, command));
                         }
                     }
 

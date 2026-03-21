@@ -10,12 +10,15 @@ impl Tmux {
     pub fn display_popup(
         &self,
         command: String,
+        working_dir: &str,
         position: &Position,
         border: &String,
         exit: bool,
     ) -> Result<Child> {
         let mut arguments = vec![DISPLAY_POPUP.to_string()];
 
+        arguments.push("-d".to_string());
+        arguments.push(working_dir.to_string());
         arguments.append(&mut Self::construct_border_arguments(border));
         arguments.append(&mut Self::construct_position_arguments(position));
         if exit {

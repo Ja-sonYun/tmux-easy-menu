@@ -7,7 +7,6 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
-use shell::shell_quote;
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -137,7 +136,13 @@ fn main() -> Result<()> {
                 let (tx, rx) = channel::<()>();
                 let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
-                tmux.display_popup(cmd_to_run_input_of_this, &position, &border, true)
+                tmux.display_popup(
+                    cmd_to_run_input_of_this,
+                    working_dir.to_str().unwrap(),
+                    &position,
+                    &border,
+                    true,
+                )
                     .expect("Failed to run command");
 
                 // Send the signal to stop reading
@@ -155,15 +160,9 @@ fn main() -> Result<()> {
                     cmd = cmd.replace(&format!("%%{}%%", key), &value);
                 }
             }
-            cmd = format!(
-                "cd {} && {}",
-                shell_quote(working_dir.to_str().unwrap()),
-                cmd
-            );
-
             pipe::remove()?;
 
-            tmux.display_popup(cmd, &position, &border, e)
+            tmux.display_popup(cmd, working_dir.to_str().unwrap(), &position, &border, e)
                 .expect("Failed to display popup");
         }
         Some(("input", sub_matches)) => {
