@@ -7,6 +7,7 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
+use shell::shell_quote;
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -136,13 +137,8 @@ fn main() -> Result<()> {
                 let (tx, rx) = channel::<()>();
                 let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
-                tmux.display_popup(
-                    cmd_to_run_input_of_this,
-                    &position,
-                    &border,
-                    true,
-                )
-                .expect("Failed to run command");
+                tmux.display_popup(cmd_to_run_input_of_this, &position, &border, true)
+                    .expect("Failed to run command");
 
                 // Send the signal to stop reading
                 let _ = tx.send(());
@@ -161,7 +157,7 @@ fn main() -> Result<()> {
             }
             cmd = format!(
                 "cd {} && {}",
-                working_dir.to_str().unwrap().to_string(),
+                shell_quote(working_dir.to_str().unwrap()),
                 cmd
             );
 

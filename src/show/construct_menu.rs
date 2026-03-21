@@ -1,4 +1,4 @@
-use crate::shell::run_command;
+use crate::shell::{run_command, shell_quote};
 
 use crate::show::construct_position::Position;
 use crate::show::this::run_this_with;
@@ -188,7 +188,7 @@ impl MenuType {
                         if environment.is_empty() {
                             return Ok(format!(
                                 "cd {} && {}",
-                                working_dir.to_str().unwrap(),
+                                shell_quote(working_dir.to_str().unwrap()),
                                 command
                             ));
                         } else {
@@ -197,8 +197,11 @@ impl MenuType {
                                 .iter()
                                 .map(|(k, v)| {
                                     format!(
-                                        "tmux set-environment {} '{}' && export {}='{}'",
-                                        k, v, k, v
+                                        "tmux set-environment {} {} && export {}={}",
+                                        k,
+                                        shell_quote(v),
+                                        k,
+                                        shell_quote(v)
                                     )
                                 })
                                 .collect::<Vec<_>>()
@@ -206,7 +209,7 @@ impl MenuType {
                             return Ok(format!(
                                 "{} && cd {} && {}",
                                 env_setup,
-                                working_dir.to_str().unwrap(),
+                                shell_quote(working_dir.to_str().unwrap()),
                                 command
                             ));
                         }
@@ -254,6 +257,7 @@ impl MenuType {
                         let _session_name =
                             format!("_popup_{}_{}", hash_prefix, final_session_name);
                         let encoded_cmd = STANDARD.encode(&command);
+                        let quoted_session = shell_quote(&_session_name);
 
                         // Build environment flags for new-session
                         let env_flags = if environment.is_empty() {
@@ -261,7 +265,7 @@ impl MenuType {
                         } else {
                             environment
                                 .iter()
-                                .map(|(k, v)| format!("-e {}='{}'", k, v))
+                                .map(|(k, v)| format!("-e {}={}", k, shell_quote(v)))
                                 .collect::<Vec<_>>()
                                 .join(" ")
                                 + " "
@@ -272,8 +276,8 @@ impl MenuType {
                             (cd {working_dir} && tmux new-session -d -s {session} {env_flags}\\\"$(echo {encoded_cmd} | base64 -d)\\\" 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             tmux attach -t {session})",
-                            session = _session_name,
-                            working_dir = working_dir.to_str().unwrap(),
+                            session = quoted_session,
+                            working_dir = shell_quote(working_dir.to_str().unwrap()),
                             encoded_cmd = encoded_cmd,
                             env_flags = env_flags
                         ));
@@ -282,7 +286,7 @@ impl MenuType {
                         if environment.is_empty() {
                             wrapped_command.push(format!(
                                 "cd {} && {}",
-                                working_dir.to_str().unwrap(),
+                                shell_quote(working_dir.to_str().unwrap()),
                                 command
                             ));
                         } else {
@@ -291,8 +295,11 @@ impl MenuType {
                                 .iter()
                                 .map(|(k, v)| {
                                     format!(
-                                        "tmux set-environment {} '{}' && export {}='{}'",
-                                        k, v, k, v
+                                        "tmux set-environment {} {} && export {}={}",
+                                        k,
+                                        shell_quote(v),
+                                        k,
+                                        shell_quote(v)
                                     )
                                 })
                                 .collect::<Vec<_>>()
@@ -300,7 +307,7 @@ impl MenuType {
                             wrapped_command.push(format!(
                                 "{} && cd {} && {}",
                                 env_setup,
-                                working_dir.to_str().unwrap(),
+                                shell_quote(working_dir.to_str().unwrap()),
                                 command
                             ));
                         }
