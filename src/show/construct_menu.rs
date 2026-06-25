@@ -235,8 +235,7 @@ impl MenuType {
                             let full_path = dir_for_session
                                 .to_str()
                                 .unwrap_or("unknown")
-                                .replace("/", "_")
-                                .replace(" ", "_");
+                                .replace(['/', ' ', '.', ':'], "_");
                             format!("{}_{}", session_part, full_path)
                         } else {
                             session_part
