@@ -7,7 +7,7 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
-use shell::shell_quote;
+use shell::{exec_shell, shell_quote};
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -58,6 +58,20 @@ fn cli() -> Command {
                 .arg_required_else_help(true),
         )
         .subcommand(
+            Command::new("select")
+                .about("Run a selected menu item")
+                .arg(arg!(--menu <MENU> "Path to the menu file").required(true))
+                .arg(arg!(--index <INDEX> "Menu item index").required(true))
+                .arg(
+                    arg!(--working_dir <DIR> "Working directory")
+                        .required(false)
+                        .default_value("."),
+                )
+                .arg(arg!(-x --x <X> "X position for display-menu").required(false))
+                .arg(arg!(-y --y <Y> "Y position for display-menu").required(false))
+                .arg_required_else_help(true),
+        )
+        .subcommand(
             Command::new("input")
                 .about("Run a command")
                 .arg(arg!(--key <KEY> "Key to show").required(true).num_args(..))
@@ -66,13 +80,66 @@ fn cli() -> Command {
 }
 
 fn get_inputs(value_refs: Option<ValuesRef<String>>) -> Vec<String> {
-    let mut inputs = vec![];
-    if let Some(values) = value_refs {
-        for value in values {
-            inputs.push(value.to_string());
-        }
+    value_refs
+        .map(|values| values.map(ToString::to_string).collect())
+        .unwrap_or_default()
+}
+
+fn apply_cli_position(menus: &mut Menus, x: Option<String>, y: Option<String>) {
+    if let Some(x) = x {
+        menus.position.x = x.clone();
+        menus.cli_x = Some(x);
     }
-    inputs
+    if let Some(y) = y {
+        menus.position.y = y.clone();
+        menus.cli_y = Some(y);
+    }
+}
+
+fn run_show(
+    menu: String,
+    working_dir: String,
+    x: Option<String>,
+    y: Option<String>,
+    verbose: u8,
+) -> Result<()> {
+    let working_dir = canonicalize(PathBuf::from(working_dir))?;
+    let path = canonicalize(PathBuf::from(menu))?;
+    let mut menus = Menus::load(path, working_dir)?;
+
+    apply_cli_position(&mut menus, x, y);
+
+    let tmux = Tmux::new();
+    tmux.display_menu(&menus, &verbose)?;
+    Ok(())
+}
+
+fn run_select(
+    menu: String,
+    working_dir: String,
+    index: usize,
+    x: Option<String>,
+    y: Option<String>,
+) -> Result<()> {
+    let working_dir = canonicalize(PathBuf::from(working_dir))?;
+    let path = canonicalize(PathBuf::from(menu))?;
+    let mut menus = Menus::load_for_select(path, working_dir)?;
+
+    apply_cli_position(&mut menus, x, y);
+
+    let menu = menus
+        .items
+        .get(index)
+        .ok_or_else(|| anyhow::anyhow!("Menu item index out of range: {index}"))?;
+    let command = menu.get_execute_command(
+        &menus.conf_path,
+        &menus.cwd,
+        menus.cli_x.as_deref(),
+        menus.cli_y.as_deref(),
+    )?;
+
+    exec_shell(command)?;
+    Ok(())
 }
 
 fn main() -> Result<()> {
@@ -80,27 +147,16 @@ fn main() -> Result<()> {
 
     match matches.subcommand() {
         Some(("show", sub_matches)) => {
-            let working_dir = canonicalize(PathBuf::from(
-                sub_matches.get_one::<String>("working_dir").unwrap(),
-            ))?;
-            let path = PathBuf::from(sub_matches.get_one::<String>("menu").unwrap());
-            let verbose = sub_matches.get_one::<u8>("verbose").unwrap();
-
-            let mut menus = Menus::load(path, working_dir).expect("Failed to load menus");
-
-            if let Some(x) = sub_matches.get_one::<String>("x") {
-                let x = x.to_string();
-                menus.position.x = x.clone();
-                menus.cli_x = Some(x);
-            }
-            if let Some(y) = sub_matches.get_one::<String>("y") {
-                let y = y.to_string();
-                menus.position.y = y.clone();
-                menus.cli_y = Some(y);
-            }
-            let tmux = Tmux::new();
-
-            tmux.display_menu(&menus, verbose)?;
+            run_show(
+                sub_matches.get_one::<String>("menu").unwrap().clone(),
+                sub_matches
+                    .get_one::<String>("working_dir")
+                    .unwrap()
+                    .clone(),
+                sub_matches.get_one::<String>("x").cloned(),
+                sub_matches.get_one::<String>("y").cloned(),
+                *sub_matches.get_one::<u8>("verbose").unwrap(),
+            )?;
         }
         Some(("popup", sub_matches)) => {
             let tmux = Tmux::new();
@@ -126,31 +182,23 @@ fn main() -> Result<()> {
             let position = Position { x, y, w, h };
 
             if !keys.is_empty() {
-                // create pipe
                 pipe::create()?;
 
                 let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
                 base_arguments.extend(keys);
                 let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
 
-                // Trying to receive the input
                 let (tx, rx) = channel::<()>();
                 let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
-                tmux.display_popup(
-                    cmd_to_run_input_of_this,
-                    &position,
-                    &border,
-                    true,
-                )
-                .expect("Failed to run command");
+                tmux.display_popup(cmd_to_run_input_of_this, &position, &border, true)
+                    .expect("Failed to run command");
 
-                // Send the signal to stop reading
                 let _ = tx.send(());
 
                 let result = reader.join().expect("Failed to join reader thread");
 
-                if result == "" {
+                if result.is_empty() {
                     pipe::remove()?;
                     return Ok(());
                 }
@@ -160,16 +208,30 @@ fn main() -> Result<()> {
                     cmd = cmd.replace(&format!("%%{}%%", key), &value);
                 }
             }
-            cmd = format!(
-                "cd {} && {}",
-                shell_quote(working_dir.to_str().unwrap()),
-                cmd
-            );
+            let working_dir = working_dir
+                .to_str()
+                .ok_or_else(|| anyhow::anyhow!("working directory path is not valid UTF-8"))?;
+            cmd = format!("cd {} && {}", shell_quote(working_dir), cmd);
 
             pipe::remove()?;
 
             tmux.display_popup(cmd, &position, &border, e)
                 .expect("Failed to display popup");
+        }
+        Some(("select", sub_matches)) => {
+            run_select(
+                sub_matches.get_one::<String>("menu").unwrap().clone(),
+                sub_matches
+                    .get_one::<String>("working_dir")
+                    .unwrap()
+                    .clone(),
+                sub_matches
+                    .get_one::<String>("index")
+                    .unwrap()
+                    .parse::<usize>()?,
+                sub_matches.get_one::<String>("x").cloned(),
+                sub_matches.get_one::<String>("y").cloned(),
+            )?;
         }
         Some(("input", sub_matches)) => {
             let mut received_inputs: HashMap<String, String> = HashMap::new();
@@ -184,10 +246,8 @@ fn main() -> Result<()> {
                     .read_line(&mut input)
                     .expect("Failed to read line");
 
-                // Clear the line
                 print!("\x1B[2J");
 
-                // remove new line
                 received_inputs.insert(key, input.trim().to_string());
             }
 

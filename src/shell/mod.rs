@@ -1,3 +1,3 @@
 pub mod command;
 
-pub use command::{run_command, shell_quote, spawn_binary};
+pub use command::{exec_shell, run_command, shell_join, shell_quote, spawn_binary};

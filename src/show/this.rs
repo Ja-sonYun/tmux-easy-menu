@@ -1,32 +1,29 @@
-use crate::shell::shell_quote;
+use crate::shell::{shell_join, shell_quote};
 use anyhow::Result;
 use std::env::current_exe;
 use std::path::PathBuf;
 
-fn parse_arguments(args: Vec<String>) -> Result<String> {
-    // Parse arguments here, if argument has spaces, wrap it in quotes
-    // If argument has quotes, escape them. and result.
-    let mut result = String::new();
-
-    for arg in args {
-        if arg.contains(" ") {
-            result.push_str(&format!("\"{}\" ", arg));
-        } else {
-            result.push_str(&format!("{} ", arg));
-        }
-    }
-
-    Ok(result)
-}
-
 pub fn run_this_with(on_dir: &PathBuf, args: Vec<String>) -> Result<String> {
     let this_binary = current_exe()?;
+    let this_binary = this_binary
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("current executable path is not valid UTF-8"))?;
+    run_this_binary_with(on_dir, this_binary, args)
+}
 
-    // TODO: Unwrap quote
+pub fn run_this_binary_with(
+    on_dir: &PathBuf,
+    this_binary: &str,
+    args: Vec<String>,
+) -> Result<String> {
+    let mut command = vec![this_binary.to_string()];
+    command.extend(args);
+    let on_dir = on_dir
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("target directory path is not valid UTF-8"))?;
     Ok(format!(
-        "cd {} && {} {}",
-        shell_quote(on_dir.to_str().unwrap()),
-        this_binary.to_str().unwrap(),
-        parse_arguments(args)?
+        "cd {} && {}",
+        shell_quote(on_dir),
+        shell_join(&command)?
     ))
 }

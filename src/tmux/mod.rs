@@ -3,7 +3,7 @@ pub mod subcommand;
 
 use std::process::Child;
 
-use crate::shell::{run_command, spawn_binary};
+use crate::shell::spawn_binary;
 use crate::show::construct_position::Position;
 use anyhow::Result;
 
@@ -12,13 +12,8 @@ pub struct Tmux {
 }
 
 impl Tmux {
-    fn _get_tmux_binary() -> Result<String> {
-        let output = run_command("which tmux".to_string())?;
-        Ok(output)
-    }
-
-    fn _run(&self, arguments: Vec<String>, non_block: bool) -> Result<Child> {
-        spawn_binary(self.binary.clone(), arguments, non_block)
+    fn _run(&self, arguments: Vec<String>) -> Result<Child> {
+        spawn_binary(self.binary.clone(), arguments)
     }
 
     fn construct_border_arguments(border: &str) -> Vec<String> {
@@ -49,7 +44,7 @@ impl Tmux {
 
     pub fn new() -> Self {
         Self {
-            binary: Self::_get_tmux_binary().unwrap(),
+            binary: "tmux".to_string(),
         }
     }
 }

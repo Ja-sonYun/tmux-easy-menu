@@ -36,15 +36,6 @@ impl Position {
         }
     }
 
-    pub fn wh(w: i32, h: i32) -> Self {
-        Self {
-            x: right(),
-            y: bottom(),
-            w: Some(w.to_string()),
-            h: Some(h.to_string()),
-        }
-    }
-
     pub fn as_this_arguments(&self) -> Vec<String> {
         let mut arguments: Vec<String> = Vec::new();
 

@@ -23,7 +23,7 @@ impl Tmux {
         }
         arguments.push(command);
 
-        let child = self._run(arguments, false)?;
+        let child = self._run(arguments)?;
 
         Ok(child)
     }
