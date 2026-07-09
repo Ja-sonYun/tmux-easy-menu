@@ -7,7 +7,7 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
-use shell::{exec_shell, shell_quote};
+use shell::{exec_shell, run_command, shell_quote};
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -180,6 +180,21 @@ fn main() -> Result<()> {
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
 
             let position = Position { x, y, w, h };
+
+            // consumed by the tmux-side popup-move keybinding; only effective for `session: true` popups
+            let raw_geom = format!(
+                "{} {} {} {}",
+                position.x,
+                position.y,
+                position.w.as_deref().unwrap_or(""),
+                position.h.as_deref().unwrap_or("")
+            );
+            let _ = run_command(format!(
+                "tmux set -g @popup_client \"$(tmux display-message -p '#{{client_name}}')\"; \
+                 tmux set -g @popup_pending_geom {}; tmux set -g @popup_pending_border {}",
+                shell_quote(&raw_geom),
+                shell_quote(&border)
+            ));
 
             if !keys.is_empty() {
                 pipe::create()?;
