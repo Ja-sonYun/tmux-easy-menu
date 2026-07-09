@@ -48,6 +48,7 @@ fn cli() -> Command {
                 .arg(arg!(--w <W> "Width"))
                 .arg(arg!(--h <H> "Height"))
                 .arg(arg!(--border <BORDER> "Border"))
+                .arg(arg!(--session_name <SESSION> "Popup session name").required(false))
                 .arg(arg!(--key <KEY> "Key to show").num_args(..))
                 .arg(arg!(-E --exit ... "Exit after command"))
                 .arg(
@@ -94,6 +95,26 @@ fn apply_cli_position(menus: &mut Menus, x: Option<String>, y: Option<String>) {
         menus.position.y = y.clone();
         menus.cli_y = Some(y);
     }
+}
+
+fn position_from_geometry(geometry: &str) -> Option<Position> {
+    let mut values = geometry.split_whitespace();
+    let position = Position {
+        x: values.next()?.to_string(),
+        y: values.next()?.to_string(),
+        w: Some(values.next()?.to_string()),
+        h: Some(values.next()?.to_string()),
+    };
+    values.next().is_none().then_some(position)
+}
+
+fn saved_popup_position(session_name: Option<&String>) -> Option<Position> {
+    let key: String = session_name?
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect();
+    let geometry = run_command(format!("tmux show-options -gqv @popup_geom_{key}")).ok()?;
+    position_from_geometry(&geometry)
 }
 
 fn run_show(
@@ -179,7 +200,8 @@ fn main() -> Result<()> {
             let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
 
-            let position = Position { x, y, w, h };
+            let position = saved_popup_position(sub_matches.get_one::<String>("session_name"))
+                .unwrap_or(Position { x, y, w, h });
 
             // consumed by the tmux-side popup-move keybinding; only effective for `session: true` popups
             let raw_geom = format!(
@@ -273,4 +295,21 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::position_from_geometry;
+
+    #[test]
+    fn popup_geometry_requires_four_values() {
+        let position = position_from_geometry("10 20 80 24").unwrap();
+
+        assert_eq!(position.x, "10");
+        assert_eq!(position.y, "20");
+        assert_eq!(position.w.as_deref(), Some("80"));
+        assert_eq!(position.h.as_deref(), Some("24"));
+        assert!(position_from_geometry("10 20 80").is_none());
+        assert!(position_from_geometry("10 20 80 24 extra").is_none());
+    }
 }

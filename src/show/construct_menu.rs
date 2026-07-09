@@ -256,6 +256,8 @@ impl MenuType {
                             command = shell_quote(&command),
                             env_flags = env_flags
                         ));
+                        wrapped_command.push("--session_name".to_string());
+                        wrapped_command.push(_session_name);
                     } else {
                         if environment.is_empty() {
                             wrapped_command
@@ -474,6 +476,8 @@ mod tests {
 
         assert!(popup_command.contains("tmux attach -t '_popup_"));
         assert!(popup_command.contains("bad; echo pwn'"));
+        let session_index = args.iter().position(|arg| arg == "--session_name").unwrap();
+        assert!(args[session_index + 1].starts_with("_popup_"));
 
         fs::remove_dir_all(root).unwrap();
     }
