@@ -1,6 +1,6 @@
 # On tmux.conf, add below line.
 #
-# bind-key k run-shell "$HOME/tmux-menu/target/debug/tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
+# bind-key k run-shell -b "$HOME/tmux-menu/target/debug/tmux-menu show --menu $HOME/tmux-menu/examples/menu.yaml --working_dir #{pane_current_path}"
 #                       ^~~ Or add binary to your path
 # =============================
 #
@@ -29,7 +29,6 @@
 #       background: false
 #       close_after_command: true
 #       border: none                  # Select popup border type, optional
-#       session: false                # Run commmand in new session. Usefull for long running command.
 #       session_name: name            # Session name, which will be used if session is true. This must be unique.
 #       session_on_dir: false         # Use directory path as part of session name
 #       run_on_git_root: false        # Run command from git repository root instead of current directory

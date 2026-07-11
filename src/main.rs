@@ -7,7 +7,7 @@ mod show;
 mod tmux;
 
 use anyhow::Result;
-use shell::{exec_shell, run_command, shell_quote};
+use shell::{exec_shell, run_command, shell_join, shell_quote};
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, Command};
@@ -108,13 +108,98 @@ fn position_from_geometry(geometry: &str) -> Option<Position> {
     values.next().is_none().then_some(position)
 }
 
-fn saved_popup_position(session_name: Option<&String>) -> Option<Position> {
-    let key: String = session_name?
+fn popup_key(session_name: &str) -> String {
+    session_name
         .chars()
         .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect();
+        .collect()
+}
+
+fn saved_popup_position(session_name: Option<&String>) -> Option<Position> {
+    let key = popup_key(session_name?);
     let geometry = run_command(format!("tmux show-options -gqv @popup_geom_{key}")).ok()?;
     position_from_geometry(&geometry)
+}
+
+fn popup_geometry(position: &Position) -> String {
+    format!(
+        "{} {} {} {}",
+        position.x,
+        position.y,
+        position.w.as_deref().unwrap_or(""),
+        position.h.as_deref().unwrap_or("")
+    )
+}
+
+fn set_popup_options(
+    session_name: &str,
+    default_position: &Position,
+    position: &Position,
+    border: &str,
+) {
+    let key = popup_key(session_name);
+    let _ = run_command(format!(
+        "tmux set -g @popup_default_geom_{key} {}; \
+         tmux set -g @popup_client \"$(tmux display-message -p '#{{client_name}}')\"; \
+         tmux set -g @popup_pending_geom {}; tmux set -g @popup_pending_border {}",
+        shell_quote(&popup_geometry(default_position)),
+        shell_quote(&popup_geometry(position)),
+        shell_quote(border)
+    ));
+}
+
+fn clear_popup_options(session_name: &str) {
+    let key = popup_key(session_name);
+    let _ = run_command(format!(
+        "tmux set -gu @popup_geom_{key}; tmux set -gu @popup_default_geom_{key}; \
+         tmux set -gu @popup_border_{key}"
+    ));
+}
+
+fn transient_popup_command(session_name: &str, command: &str, channel: &str) -> Result<String> {
+    let inner_command = shell_join(&["sh".to_string(), "-c".to_string(), command.to_string()])?;
+    let inner_command = format!(
+        "{inner_command}; status=$?; tmux wait-for -U {}; exit $status",
+        shell_quote(channel)
+    );
+    let session_name = shell_quote(session_name);
+    let channel = shell_quote(channel);
+
+    Ok(format!(
+        "if tmux new-session -d -s {session_name} -e MENU_POPUP=1 {}; then \
+         tmux set-option -t {session_name} status off; tmux attach -t {session_name}; \
+         else tmux wait-for -U {channel}; fi",
+        shell_quote(&inner_command)
+    ))
+}
+
+fn display_transient_popup(
+    tmux: &Tmux,
+    command: String,
+    session_name: &str,
+    default_position: &Position,
+    position: &Position,
+    border: &String,
+    exit: bool,
+) -> Result<()> {
+    let channel = format!("popup_{}_done", popup_key(session_name));
+    let lock = format!("tmux wait-for -L {}", shell_quote(&channel));
+    let unlock = format!("tmux wait-for -U {}", shell_quote(&channel));
+
+    let _ = run_command(lock.clone());
+    set_popup_options(session_name, default_position, position, border);
+    let command = transient_popup_command(session_name, &command, &channel)?;
+    let result = tmux.display_popup(command, position, border, exit);
+    if let Err(error) = result {
+        let _ = run_command(unlock.clone());
+        clear_popup_options(session_name);
+        return Err(error);
+    }
+
+    let _ = run_command(lock);
+    let _ = run_command(unlock);
+    clear_popup_options(session_name);
+    Ok(())
 }
 
 fn run_show(
@@ -199,24 +284,14 @@ fn main() -> Result<()> {
             let w = Some(sub_matches.get_one::<String>("w").unwrap().clone());
             let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
+            let persistent_session = sub_matches.get_one::<String>("session_name").cloned();
+            let session_name = persistent_session
+                .clone()
+                .unwrap_or_else(|| format!("_popup_tmp_{}", std::process::id()));
+            let default_position = Position { x, y, w, h };
 
-            let position = saved_popup_position(sub_matches.get_one::<String>("session_name"))
-                .unwrap_or(Position { x, y, w, h });
-
-            // consumed by the tmux-side popup-move keybinding; only effective for `session: true` popups
-            let raw_geom = format!(
-                "{} {} {} {}",
-                position.x,
-                position.y,
-                position.w.as_deref().unwrap_or(""),
-                position.h.as_deref().unwrap_or("")
-            );
-            let _ = run_command(format!(
-                "tmux set -g @popup_client \"$(tmux display-message -p '#{{client_name}}')\"; \
-                 tmux set -g @popup_pending_geom {}; tmux set -g @popup_pending_border {}",
-                shell_quote(&raw_geom),
-                shell_quote(&border)
-            ));
+            let position = saved_popup_position(Some(&session_name))
+                .unwrap_or_else(|| default_position.clone());
 
             if !keys.is_empty() {
                 pipe::create()?;
@@ -228,8 +303,15 @@ fn main() -> Result<()> {
                 let (tx, rx) = channel::<()>();
                 let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
-                tmux.display_popup(cmd_to_run_input_of_this, &position, &border, true)
-                    .expect("Failed to run command");
+                display_transient_popup(
+                    &tmux,
+                    cmd_to_run_input_of_this,
+                    &format!("{session_name}_input"),
+                    &default_position,
+                    &position,
+                    &border,
+                    true,
+                )?;
 
                 let _ = tx.send(());
 
@@ -252,8 +334,21 @@ fn main() -> Result<()> {
 
             pipe::remove()?;
 
-            tmux.display_popup(cmd, &position, &border, e)
-                .expect("Failed to display popup");
+            if persistent_session.is_some() {
+                set_popup_options(&session_name, &default_position, &position, &border);
+                tmux.display_popup(cmd, &position, &border, e)
+                    .expect("Failed to display popup");
+            } else {
+                display_transient_popup(
+                    &tmux,
+                    cmd,
+                    &session_name,
+                    &default_position,
+                    &position,
+                    &border,
+                    e,
+                )?;
+            }
         }
         Some(("select", sub_matches)) => {
             run_select(
@@ -299,7 +394,7 @@ fn main() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::position_from_geometry;
+    use super::{position_from_geometry, transient_popup_command};
 
     #[test]
     fn popup_geometry_requires_four_values() {
@@ -311,5 +406,20 @@ mod tests {
         assert_eq!(position.h.as_deref(), Some("24"));
         assert!(position_from_geometry("10 20 80").is_none());
         assert!(position_from_geometry("10 20 80 24 extra").is_none());
+    }
+
+    #[test]
+    fn transient_popup_command_is_valid_shell() {
+        let command =
+            transient_popup_command("_popup_test", "printf '%s' \"a b;c\"", "popup_test_done")
+                .unwrap();
+
+        assert!(std::process::Command::new("sh")
+            .args(["-n", "-c", &command])
+            .status()
+            .unwrap()
+            .success());
+        assert!(command.contains("MENU_POPUP=1"));
+        assert!(command.contains("wait-for -U"));
     }
 }
