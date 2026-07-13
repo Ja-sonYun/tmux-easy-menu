@@ -49,6 +49,7 @@ items:
       border: none                  # Select popup border type, optional, possible options are: single, rounded, double, heavy, simple, padded, none
       session: false                # Keep the popup session only until the command exits; true keeps a reusable session.
       session_name: name            # Session name, which will be used if session is true. This must be unique.
+      key_table: popup-root          # Optional tmux key table for the popup session.
       session_on_dir: false         # Include directory path in session name
       run_on_git_root: false        # Run command from git repository root instead of current directory
       environment:                  # Set environment variables for command execution

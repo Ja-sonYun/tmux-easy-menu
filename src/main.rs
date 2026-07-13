@@ -49,6 +49,7 @@ fn cli() -> Command {
                 .arg(arg!(--h <H> "Height"))
                 .arg(arg!(--border <BORDER> "Border"))
                 .arg(arg!(--session_name <SESSION> "Popup session name").required(false))
+                .arg(arg!(--key_table <TABLE> "Session key table").required(false))
                 .arg(arg!(--key <KEY> "Key to show").num_args(..))
                 .arg(arg!(-E --exit ... "Exit after command"))
                 .arg(
@@ -156,7 +157,12 @@ fn clear_popup_options(session_name: &str) {
     ));
 }
 
-fn transient_popup_command(session_name: &str, command: &str, channel: &str) -> Result<String> {
+fn transient_popup_command(
+    session_name: &str,
+    command: &str,
+    channel: &str,
+    key_table: Option<&str>,
+) -> Result<String> {
     let inner_command = shell_join(&["sh".to_string(), "-c".to_string(), command.to_string()])?;
     let inner_command = format!(
         "{inner_command}; status=$?; tmux wait-for -U {}; exit $status",
@@ -164,10 +170,18 @@ fn transient_popup_command(session_name: &str, command: &str, channel: &str) -> 
     );
     let session_name = shell_quote(session_name);
     let channel = shell_quote(channel);
+    let set_key_table = key_table
+        .map(|key_table| {
+            format!(
+                "tmux set-option -t {session_name} key-table {} && ",
+                shell_quote(key_table)
+            )
+        })
+        .unwrap_or_default();
 
     Ok(format!(
-        "if tmux new-session -d -s {session_name} -e MENU_POPUP=1 {}; then \
-         tmux set-option -t {session_name} status off; tmux attach -t {session_name}; \
+        "if tmux new-session -d -s {session_name} {}; then \
+         tmux set-option -t {session_name} status off; {set_key_table}tmux attach -t {session_name}; \
          else tmux wait-for -U {channel}; fi",
         shell_quote(&inner_command)
     ))
@@ -181,6 +195,7 @@ fn display_transient_popup(
     position: &Position,
     border: &String,
     exit: bool,
+    key_table: Option<&str>,
 ) -> Result<()> {
     let channel = format!("popup_{}_done", popup_key(session_name));
     let lock = format!("tmux wait-for -L {}", shell_quote(&channel));
@@ -188,7 +203,7 @@ fn display_transient_popup(
 
     let _ = run_command(lock.clone());
     set_popup_options(session_name, default_position, position, border);
-    let command = transient_popup_command(session_name, &command, &channel)?;
+    let command = transient_popup_command(session_name, &command, &channel, key_table)?;
     let result = tmux.display_popup(command, position, border, exit);
     if let Err(error) = result {
         let _ = run_command(unlock.clone());
@@ -284,6 +299,7 @@ fn main() -> Result<()> {
             let w = Some(sub_matches.get_one::<String>("w").unwrap().clone());
             let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
+            let key_table = sub_matches.get_one::<String>("key_table").cloned();
             let persistent_session = sub_matches.get_one::<String>("session_name").cloned();
             let session_name = persistent_session
                 .clone()
@@ -311,6 +327,7 @@ fn main() -> Result<()> {
                     &position,
                     &border,
                     true,
+                    key_table.as_deref(),
                 )?;
 
                 let _ = tx.send(());
@@ -347,6 +364,7 @@ fn main() -> Result<()> {
                     &position,
                     &border,
                     e,
+                    key_table.as_deref(),
                 )?;
             }
         }
@@ -410,16 +428,20 @@ mod tests {
 
     #[test]
     fn transient_popup_command_is_valid_shell() {
-        let command =
-            transient_popup_command("_popup_test", "printf '%s' \"a b;c\"", "popup_test_done")
-                .unwrap();
+        let command = transient_popup_command(
+            "_popup_test",
+            "printf '%s' \"a b;c\"",
+            "popup_test_done",
+            Some("popup; echo pwn"),
+        )
+        .unwrap();
 
         assert!(std::process::Command::new("sh")
             .args(["-n", "-c", &command])
             .status()
             .unwrap()
             .success());
-        assert!(command.contains("MENU_POPUP=1"));
+        assert!(command.contains("key-table 'popup; echo pwn'"));
         assert!(command.contains("wait-for -U"));
     }
 }

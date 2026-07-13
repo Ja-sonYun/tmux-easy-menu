@@ -39,6 +39,9 @@ pub enum MenuType {
         session_name: Option<String>,
 
         #[serde(default)]
+        key_table: Option<String>,
+
+        #[serde(default)]
         session_on_dir: bool,
 
         #[serde(default)]
@@ -118,6 +121,7 @@ impl MenuType {
                 position,
                 session,
                 session_name,
+                key_table,
                 session_on_dir,
                 run_on_git_root,
                 border,
@@ -196,6 +200,11 @@ impl MenuType {
                     }
                     wrapped_command.push("popup".to_string());
 
+                    if let Some(key_table) = key_table {
+                        wrapped_command.push("--key_table".to_string());
+                        wrapped_command.push(key_table.to_string());
+                    }
+
                     wrapped_command.push("--working_dir".to_string());
                     wrapped_command.push(working_dir.to_string());
 
@@ -235,6 +244,15 @@ impl MenuType {
                         let _session_name =
                             format!("_popup_{}_{}", hash_prefix, final_session_name);
                         let quoted_session = shell_quote(&_session_name);
+                        let set_key_table = key_table
+                            .as_ref()
+                            .map(|key_table| {
+                                format!(
+                                    "tmux set-option -t {quoted_session} key-table {} 2>/dev/null && ",
+                                    shell_quote(key_table)
+                                )
+                            })
+                            .unwrap_or_default();
                         let env_flags = if environment.is_empty() {
                             String::new()
                         } else {
@@ -247,9 +265,10 @@ impl MenuType {
                         };
 
                         wrapped_command.push(format!(
-                            "tmux attach -t {session} 2>/dev/null || \
+                            "{set_key_table}tmux attach -t {session} 2>/dev/null || \
                             (cd {working_dir} && tmux new-session -d -s {session} {env_flags}{command} 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
+                            {set_key_table}\
                             tmux attach -t {session})",
                             session = quoted_session,
                             working_dir = quoted_working_dir,
@@ -458,6 +477,7 @@ mod tests {
             close_after_command: true,
             session: true,
             session_name: Some("bad; echo pwn".to_string()),
+            key_table: Some("popup; echo pwn".to_string()),
             session_on_dir: false,
             run_on_git_root: false,
             background: false,
@@ -476,6 +496,7 @@ mod tests {
 
         assert!(popup_command.contains("tmux attach -t '_popup_"));
         assert!(popup_command.contains("bad; echo pwn'"));
+        assert!(popup_command.contains("key-table 'popup; echo pwn'"));
         let session_index = args.iter().position(|arg| arg == "--session_name").unwrap();
         assert!(args[session_index + 1].starts_with("_popup_"));
 
