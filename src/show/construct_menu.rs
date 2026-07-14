@@ -51,6 +51,9 @@ pub enum MenuType {
         background: bool,
 
         #[serde(default)]
+        as_floating_pane: bool,
+
+        #[serde(default)]
         inputs: Vec<String>,
 
         #[serde(default = "Position::new_xywh")]
@@ -118,6 +121,7 @@ impl MenuType {
                 next_menu,
                 close_after_command,
                 background,
+                as_floating_pane,
                 position,
                 session,
                 session_name,
@@ -200,6 +204,10 @@ impl MenuType {
                     }
                     wrapped_command.push("popup".to_string());
 
+                    if *as_floating_pane {
+                        wrapped_command.push("--as_floating_pane".to_string());
+                    }
+
                     if let Some(key_table) = key_table {
                         wrapped_command.push("--key_table".to_string());
                         wrapped_command.push(key_table.to_string());
@@ -263,13 +271,18 @@ impl MenuType {
                                 .join(" ")
                                 + " "
                         };
+                        let attach = if *as_floating_pane {
+                            "TMUX= tmux -S \"$(tmux display-message -p '#{socket_path}')\" attach"
+                        } else {
+                            "tmux attach"
+                        };
 
                         wrapped_command.push(format!(
-                            "{set_key_table}tmux attach -t {session} 2>/dev/null || \
+                            "{set_key_table}{attach} -t {session} 2>/dev/null || \
                             (cd {working_dir} && tmux new-session -d -s {session} {env_flags}{command} 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             {set_key_table}\
-                            tmux attach -t {session})",
+                            {attach} -t {session})",
                             session = quoted_session,
                             working_dir = quoted_working_dir,
                             command = shell_quote(&command),
@@ -465,6 +478,18 @@ mod tests {
     }
 
     #[test]
+    fn floating_pane_is_opt_in() {
+        let menu: MenuType = serde_yaml::from_str("Menu:\n  name: test\n  command: ':'").unwrap();
+
+        match menu {
+            MenuType::Menu {
+                as_floating_pane, ..
+            } => assert!(!as_floating_pane),
+            _ => panic!("expected menu"),
+        }
+    }
+
+    #[test]
     fn session_name_is_quoted_in_shell_command() {
         let root = test_dir("quoted-session");
         fs::create_dir_all(&root).unwrap();
@@ -481,6 +506,7 @@ mod tests {
             session_on_dir: false,
             run_on_git_root: false,
             background: false,
+            as_floating_pane: true,
             inputs: Vec::new(),
             position: Position::new_xywh(),
             border: None,
@@ -494,11 +520,13 @@ mod tests {
         let cmd_index = args.iter().position(|arg| arg == "--cmd").unwrap();
         let popup_command = &args[cmd_index + 1];
 
-        assert!(popup_command.contains("tmux attach -t '_popup_"));
+        assert!(popup_command.contains("TMUX= tmux -S"));
+        assert!(popup_command.contains("attach -t '_popup_"));
         assert!(popup_command.contains("bad; echo pwn'"));
         assert!(popup_command.contains("key-table 'popup; echo pwn'"));
         let session_index = args.iter().position(|arg| arg == "--session_name").unwrap();
         assert!(args[session_index + 1].starts_with("_popup_"));
+        assert!(args.iter().any(|arg| arg == "--as_floating_pane"));
 
         fs::remove_dir_all(root).unwrap();
     }

@@ -45,7 +45,9 @@ items:
         - KEY                       # This input will be replaced with '%%KEY%%' on command
 #     ------------------
       background: false             # Run command in background, popup will closed immediately
-      close_after_command: true     # Close popup after command exited. if false, you should type <C-c> to close popup.
+      as_floating_pane: false       # Open in a floating pane instead of display-popup (tmux 3.7+)
+                                    # Position: x=C/R, y=C/P, or absolute/% values; border is popup-only
+      close_after_command: true     # Close after command exits; false keeps the popup or pane open
       border: none                  # Select popup border type, optional, possible options are: single, rounded, double, heavy, simple, padded, none
       session: false                # Keep the popup session only until the command exits; true keeps a reusable session.
       session_name: name            # Session name, which will be used if session is true. This must be unique.

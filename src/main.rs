@@ -10,7 +10,7 @@ use anyhow::Result;
 use shell::{exec_shell, run_command, shell_join, shell_quote};
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
-use clap::{arg, parser::ValuesRef, Command};
+use clap::{arg, parser::ValuesRef, ArgAction, Command};
 use std::sync::mpsc::channel;
 use tmux::Tmux;
 
@@ -50,6 +50,10 @@ fn cli() -> Command {
                 .arg(arg!(--border <BORDER> "Border"))
                 .arg(arg!(--session_name <SESSION> "Popup session name").required(false))
                 .arg(arg!(--key_table <TABLE> "Session key table").required(false))
+                .arg(
+                    arg!(--as_floating_pane "Open command in a floating pane")
+                        .action(ArgAction::SetTrue),
+                )
                 .arg(arg!(--key <KEY> "Key to show").num_args(..))
                 .arg(arg!(-E --exit ... "Exit after command"))
                 .arg(
@@ -300,6 +304,7 @@ fn main() -> Result<()> {
             let h = Some(sub_matches.get_one::<String>("h").unwrap().clone());
             let e = *sub_matches.get_one::<u8>("exit").unwrap() == 1;
             let key_table = sub_matches.get_one::<String>("key_table").cloned();
+            let as_floating_pane = sub_matches.get_flag("as_floating_pane");
             let persistent_session = sub_matches.get_one::<String>("session_name").cloned();
             let session_name = persistent_session
                 .clone()
@@ -319,16 +324,20 @@ fn main() -> Result<()> {
                 let (tx, rx) = channel::<()>();
                 let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
 
-                display_transient_popup(
-                    &tmux,
-                    cmd_to_run_input_of_this,
-                    &format!("{session_name}_input"),
-                    &default_position,
-                    &position,
-                    &border,
-                    true,
-                    key_table.as_deref(),
-                )?;
+                if as_floating_pane {
+                    tmux.new_pane(cmd_to_run_input_of_this, &position, true)?;
+                } else {
+                    display_transient_popup(
+                        &tmux,
+                        cmd_to_run_input_of_this,
+                        &format!("{session_name}_input"),
+                        &default_position,
+                        &position,
+                        &border,
+                        true,
+                        key_table.as_deref(),
+                    )?;
+                }
 
                 let _ = tx.send(());
 
@@ -352,9 +361,16 @@ fn main() -> Result<()> {
             pipe::remove()?;
 
             if persistent_session.is_some() {
-                set_popup_options(&session_name, &default_position, &position, &border);
-                tmux.display_popup(cmd, &position, &border, e)
-                    .expect("Failed to display popup");
+                if as_floating_pane {
+                    tmux.new_pane(cmd, &position, e)
+                        .expect("Failed to create floating pane");
+                } else {
+                    set_popup_options(&session_name, &default_position, &position, &border);
+                    tmux.display_popup(cmd, &position, &border, e)
+                        .expect("Failed to display popup");
+                }
+            } else if as_floating_pane {
+                tmux.new_pane(cmd, &position, e)?;
             } else {
                 display_transient_popup(
                     &tmux,
