@@ -53,7 +53,7 @@ items:
       session_name: name            # Session name, which will be used if session is true. This must be unique.
       key_table: popup-root          # Optional tmux key table for the popup session.
       session_on_dir: false         # Include directory path in session name
-      run_on_git_root: false        # Run command from git repository root instead of current directory
+      run_on_git_root: false        # Run command from the top-level git root, ignoring submodules
       environment:                  # Set environment variables for command execution
         MY_VAR: "value"
         ANOTHER_VAR: "another value"

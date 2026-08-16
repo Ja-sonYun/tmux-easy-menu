@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use std::fs::{canonicalize, File};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::process::Command;
 
 fn default_true() -> bool {
     true
@@ -352,6 +353,22 @@ impl MenuType {
         loop {
             let git = dir.join(".git");
             if git.is_dir() || git.is_file() {
+                if let Ok(output) = Command::new("git")
+                    .arg("-C")
+                    .arg(&dir)
+                    .args(["rev-parse", "--show-superproject-working-tree"])
+                    .output()
+                {
+                    if output.status.success() {
+                        if let Ok(superproject) = std::str::from_utf8(&output.stdout) {
+                            let superproject = superproject.trim();
+                            if !superproject.is_empty() {
+                                dir = PathBuf::from(superproject);
+                                continue;
+                            }
+                        }
+                    }
+                }
                 return Some(dir);
             }
 
