@@ -54,6 +54,7 @@ items:
       key_table: popup-root          # Optional tmux key table for the popup session.
       session_on_dir: false         # Include directory path in session name
       run_on_git_root: false        # Run command from the top-level git root, ignoring submodules
+      run_on_root: ".root"           # Run from the nearest ancestor containing this file; takes priority over Git root
       environment:                  # Set environment variables for command execution
         MY_VAR: "value"
         ANOTHER_VAR: "another value"
@@ -63,6 +64,8 @@ items:
         w: ...
         h: ...
 ```
+
+`run_on_root` accepts a marker filename such as `.root` or `.project-root` and uses the nearest ancestor containing that file. If no marker exists, `run_on_git_root: true` falls back to the top-level Git root; otherwise the command uses the current directory.
 
 #### Dynamic menu
 ![Alt Text](https://github.com/Ja-sonYun/tmux-easy-menu/blob/main/examples/dynamic2.gif?raw=true)

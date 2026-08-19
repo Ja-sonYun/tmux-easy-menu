@@ -9,7 +9,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::fs::{canonicalize, File};
 use std::hash::{Hash, Hasher};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn default_true() -> bool {
@@ -47,6 +47,9 @@ pub enum MenuType {
 
         #[serde(default)]
         run_on_git_root: bool,
+
+        #[serde(default)]
+        run_on_root: Option<String>,
 
         #[serde(default)]
         background: bool,
@@ -129,6 +132,7 @@ impl MenuType {
                 key_table,
                 session_on_dir,
                 run_on_git_root,
+                run_on_root,
                 border,
                 inputs,
                 environment,
@@ -168,11 +172,9 @@ impl MenuType {
                         wrapped_command.push(y.to_string());
                     }
                 } else if let Some(command) = command {
-                    let working_dir_path = if *run_on_git_root {
-                        Self::find_git_root(on_dir).unwrap_or_else(|| on_dir.clone())
-                    } else {
-                        on_dir.clone()
-                    };
+                    let working_dir_path =
+                        Self::find_root(on_dir, run_on_root.as_deref(), *run_on_git_root)
+                            .unwrap_or_else(|| on_dir.clone());
                     let working_dir = working_dir_path.to_str().ok_or_else(|| {
                         anyhow::anyhow!("working directory path is not valid UTF-8")
                     })?;
@@ -226,12 +228,7 @@ impl MenuType {
                         };
 
                         let base_session_name = if *session_on_dir {
-                            let dir_for_session = if *run_on_git_root {
-                                working_dir_path.clone()
-                            } else {
-                                on_dir.clone()
-                            };
-                            let full_path = dir_for_session
+                            let full_path = working_dir_path
                                 .to_str()
                                 .unwrap_or("unknown")
                                 .replace(['/', ' ', '.', ':'], "_");
@@ -240,7 +237,9 @@ impl MenuType {
                             session_part
                         };
 
-                        let final_session_name = if *run_on_git_root {
+                        let final_session_name = if run_on_root.is_some() {
+                            format!("root_{base_session_name}")
+                        } else if *run_on_git_root {
                             format!("git_root_{}", base_session_name)
                         } else {
                             base_session_name
@@ -347,8 +346,39 @@ impl MenuType {
         }
     }
 
-    fn find_git_root(start_dir: &PathBuf) -> Option<PathBuf> {
-        let mut dir = start_dir.clone();
+    fn find_root(
+        start_dir: &Path,
+        root_marker: Option<&str>,
+        run_on_git_root: bool,
+    ) -> Option<PathBuf> {
+        if let Some(root) = root_marker.and_then(|marker| Self::find_marker_root(start_dir, marker))
+        {
+            return Some(root);
+        }
+
+        if run_on_git_root {
+            Self::find_git_root(start_dir)
+        } else {
+            None
+        }
+    }
+
+    fn find_marker_root(start_dir: &Path, marker: &str) -> Option<PathBuf> {
+        let mut dir = start_dir.to_path_buf();
+
+        loop {
+            if dir.join(marker).is_file() {
+                return Some(dir);
+            }
+
+            if !dir.pop() {
+                return None;
+            }
+        }
+    }
+
+    fn find_git_root(start_dir: &Path) -> Option<PathBuf> {
+        let mut dir = start_dir.to_path_buf();
 
         loop {
             let git = dir.join(".git");
@@ -522,6 +552,7 @@ mod tests {
             key_table: Some("popup; echo pwn".to_string()),
             session_on_dir: false,
             run_on_git_root: false,
+            run_on_root: None,
             background: false,
             as_floating_pane: true,
             inputs: Vec::new(),
