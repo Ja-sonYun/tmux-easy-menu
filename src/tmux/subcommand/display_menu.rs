@@ -84,7 +84,7 @@ impl Tmux {
                     })
                     .collect::<Vec<_>>();
                     if !environment.is_empty() {
-                        command = format!("{} {command}", environment.join(" "));
+                        command = format!("export {}; {command}", environment.join(" "));
                     }
                     arguments.push(name.clone());
                     arguments.push(shortcut.clone());
