@@ -2,6 +2,7 @@ use std::env::current_exe;
 use std::path::PathBuf;
 use std::process::Child;
 
+use crate::shell::shell_quote;
 use crate::show::construct_menu::{MenuType, Menus};
 use crate::show::this::run_this_binary_with;
 use crate::tmux::Tmux;
@@ -69,7 +70,22 @@ impl Tmux {
                         command.push(y.to_string());
                     }
 
-                    let command = run_this_binary_with(cwd, this_binary, command)?;
+                    let mut command = run_this_binary_with(cwd, this_binary, command)?;
+                    let environment = [
+                        "TMUX_MENU_CLIENT",
+                        "TMUX_MENU_ORIGIN_PANE",
+                        "TMUX_MENU_ORIGIN_WINDOW",
+                    ]
+                    .iter()
+                    .filter_map(|name| {
+                        std::env::var(name)
+                            .ok()
+                            .map(|value| format!("{name}={}", shell_quote(&value)))
+                    })
+                    .collect::<Vec<_>>();
+                    if !environment.is_empty() {
+                        command = format!("{} {command}", environment.join(" "));
+                    }
                     arguments.push(name.clone());
                     arguments.push(shortcut.clone());
                     arguments.push(Self::run_shell_action(&command));

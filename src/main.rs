@@ -11,13 +11,18 @@ use shell::{exec_shell, run_command, shell_join, shell_quote};
 use show::{construct_menu::Menus, construct_position::Position, this::run_this_with};
 
 use clap::{arg, parser::ValuesRef, ArgAction, Command};
+use nix::errno::Errno;
+use nix::fcntl::{flock, FlockArg};
+use std::collections::hash_map::DefaultHasher;
 use std::sync::mpsc::channel;
 use tmux::Tmux;
 
 use serde_yaml::to_string;
 use std::collections::HashMap;
-use std::fs::canonicalize;
+use std::fs::{canonicalize, File, OpenOptions};
+use std::hash::{Hash, Hasher};
 use std::io;
+use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 use std::thread;
 
@@ -120,6 +125,29 @@ fn popup_key(session_name: &str) -> String {
         .collect()
 }
 
+fn acquire_popup_lock(session_name: &str) -> Result<Option<File>> {
+    let socket = std::env::var("TMUX")?
+        .split(',')
+        .next()
+        .unwrap_or_default()
+        .to_string();
+    let mut hasher = DefaultHasher::new();
+    socket.hash(&mut hasher);
+    session_name.hash(&mut hasher);
+    let path = std::env::temp_dir().join(format!("tmux-menu-{:x}.lock", hasher.finish()));
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(path)?;
+
+    match flock(file.as_raw_fd(), FlockArg::LockExclusiveNonblock) {
+        Ok(()) => Ok(Some(file)),
+        Err(Errno::EWOULDBLOCK) => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
 fn saved_popup_position(session_name: Option<&String>) -> Option<Position> {
     let key = popup_key(session_name?);
     let geometry = run_command(format!("tmux show-options -gqv @popup_geom_{key}")).ok()?;
@@ -139,16 +167,21 @@ fn popup_geometry(position: &Position) -> String {
 fn set_popup_options(
     session_name: &str,
     default_position: &Position,
-    position: &Position,
     border: &str,
 ) {
     let key = popup_key(session_name);
+    let client = std::env::var("TMUX_MENU_CLIENT")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| {
+            run_command("tmux display-message -p '#{client_name}'".to_string())
+                .unwrap_or_default()
+        });
     let _ = run_command(format!(
         "tmux set -g @popup_default_geom_{key} {}; \
-         tmux set -g @popup_client \"$(tmux display-message -p '#{{client_name}}')\"; \
-         tmux set -g @popup_pending_geom {}; tmux set -g @popup_pending_border {}",
+         tmux set -g @popup_client_{key} {}; tmux set -g @popup_border_{key} {}",
         shell_quote(&popup_geometry(default_position)),
-        shell_quote(&popup_geometry(position)),
+        shell_quote(&client),
         shell_quote(border)
     ));
 }
@@ -157,7 +190,7 @@ fn clear_popup_options(session_name: &str) {
     let key = popup_key(session_name);
     let _ = run_command(format!(
         "tmux set -gu @popup_geom_{key}; tmux set -gu @popup_default_geom_{key}; \
-         tmux set -gu @popup_border_{key}"
+         tmux set -gu @popup_border_{key}; tmux set -gu @popup_client_{key}"
     ));
 }
 
@@ -206,7 +239,7 @@ fn display_transient_popup(
     let unlock = format!("tmux wait-for -U {}", shell_quote(&channel));
 
     let _ = run_command(lock.clone());
-    set_popup_options(session_name, default_position, position, border);
+    set_popup_options(session_name, default_position, border);
     let command = transient_popup_command(session_name, &command, &channel, key_table)?;
     let result = tmux.display_popup(command, position, border, exit);
     if let Err(error) = result {
@@ -365,7 +398,10 @@ fn main() -> Result<()> {
                     tmux.new_pane(cmd, &position, e)
                         .expect("Failed to create floating pane");
                 } else {
-                    set_popup_options(&session_name, &default_position, &position, &border);
+                    let Some(_popup_lock) = acquire_popup_lock(&session_name)? else {
+                        return Ok(());
+                    };
+                    set_popup_options(&session_name, &default_position, &border);
                     tmux.display_popup(cmd, &position, &border, e)
                         .expect("Failed to display popup");
                 }
