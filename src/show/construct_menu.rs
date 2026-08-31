@@ -278,8 +278,7 @@ impl MenuType {
                         };
 
                         wrapped_command.push(format!(
-                            "{set_key_table}{attach} -t {session} 2>/dev/null || \
-                            (cd {working_dir} && tmux new-session -d -s {session} {env_flags}{command} 2>/dev/null && \
+                            "(cd {working_dir} && tmux new-session -Ad -s {session} {env_flags}{command} 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             {set_key_table}\
                             {attach} -t {session})",
