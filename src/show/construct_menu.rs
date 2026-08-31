@@ -278,10 +278,12 @@ impl MenuType {
                         };
 
                         wrapped_command.push(format!(
-                            "(cd {working_dir} && tmux new-session -Ad -s {session} {env_flags}{command} 2>/dev/null && \
+                            "if tmux list-sessions -F '#{{session_name}}' 2>/dev/null | grep -qxF -- {session}; then \
+                            {set_key_table}{attach} -t {session}; \
+                            else (cd {working_dir} && tmux new-session -d -s {session} {env_flags}{command} 2>/dev/null && \
                             tmux set-option -t {session} status off 2>/dev/null && \
                             {set_key_table}\
-                            {attach} -t {session})",
+                            {attach} -t {session}); fi",
                             session = quoted_session,
                             working_dir = quoted_working_dir,
                             command = shell_quote(&command),
