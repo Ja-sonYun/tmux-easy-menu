@@ -16,6 +16,7 @@ impl Tmux {
     ) -> Result<Child> {
         let mut arguments = vec![DISPLAY_POPUP.to_string()];
 
+        arguments.append(&mut Self::construct_client_arguments());
         arguments.append(&mut Self::construct_border_arguments(border));
         arguments.append(&mut Self::construct_position_arguments(position));
         if exit {

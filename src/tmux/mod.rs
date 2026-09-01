@@ -20,6 +20,14 @@ impl Tmux {
         vec!["-b".to_string(), border.to_string()]
     }
 
+    fn construct_client_arguments() -> Vec<String> {
+        std::env::var("TMUX_MENU_CLIENT")
+            .ok()
+            .filter(|value| !value.is_empty())
+            .map(|client| vec!["-c".to_string(), client])
+            .unwrap_or_default()
+    }
+
     fn construct_position_arguments(position: &Position) -> Vec<String> {
         if let (Some(w), Some(h)) = (position.w.clone(), position.h.clone()) {
             vec![

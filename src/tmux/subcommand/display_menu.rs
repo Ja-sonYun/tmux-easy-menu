@@ -114,6 +114,7 @@ impl Tmux {
         if verbose > &1 {
             println!("Displaying: {:?}", menu);
         }
+        arguments.append(&mut Self::construct_client_arguments());
         arguments.append(&mut Self::construct_position_arguments(&menu.position));
         arguments.append(&mut Self::construct_title_arguments(&menu.title));
         arguments.append(&mut Self::construct_border_arguments(&menu.border));

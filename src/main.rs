@@ -248,7 +248,36 @@ fn display_transient_popup(
         return Err(error);
     }
 
-    let _ = run_command(lock);
+    let quoted_session = shell_quote(session_name);
+    let session_target = shell_quote(&format!("={session_name}"));
+    let session_alive = || {
+        run_command(format!(
+            "tmux list-sessions -F '#{{session_name}}' 2>/dev/null | grep -qxF -- {quoted_session} && printf live"
+        ))
+        .unwrap_or_default()
+            == "live"
+    };
+    if session_alive() {
+        let mut reopened = false;
+        for _ in 0..15 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            let attached = run_command(format!(
+                "tmux list-clients -t {session_target} -F '#{{client_name}}' 2>/dev/null"
+            ))
+            .unwrap_or_default();
+            if !attached.is_empty() || !session_alive() {
+                reopened = true;
+                break;
+            }
+        }
+        if reopened {
+            let _ = run_command(lock);
+        } else {
+            let _ = run_command(format!("tmux kill-session -t {session_target} 2>/dev/null"));
+        }
+    } else {
+        let _ = run_command(lock);
+    }
     let _ = run_command(unlock);
     clear_popup_options(session_name);
     Ok(())
