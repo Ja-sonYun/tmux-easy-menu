@@ -73,6 +73,7 @@ impl Tmux {
                     let mut command = run_this_binary_with(cwd, this_binary, command)?;
                     let environment = [
                         "TMUX_MENU_CLIENT",
+                        "TMUX_MENU_PANE",
                         "TMUX_MENU_ORIGIN_PANE",
                         "TMUX_MENU_ORIGIN_WINDOW",
                     ]
@@ -115,6 +116,10 @@ impl Tmux {
             println!("Displaying: {:?}", menu);
         }
         arguments.append(&mut Self::construct_client_arguments());
+        if let Ok(pane) = std::env::var("TMUX_MENU_PANE") {
+            arguments.push("-t".to_string());
+            arguments.push(pane);
+        }
         arguments.append(&mut Self::construct_position_arguments(&menu.position));
         arguments.append(&mut Self::construct_title_arguments(&menu.title));
         arguments.append(&mut Self::construct_border_arguments(&menu.border));
