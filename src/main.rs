@@ -85,6 +85,7 @@ fn cli() -> Command {
         .subcommand(
             Command::new("input")
                 .about("Run a command")
+                .arg(arg!(--"pipe-path" <PATH> "Input response FIFO").required(true))
                 .arg(arg!(--key <KEY> "Key to show").required(true).num_args(..))
                 .arg_required_else_help(true),
         )
@@ -164,18 +165,13 @@ fn popup_geometry(position: &Position) -> String {
     )
 }
 
-fn set_popup_options(
-    session_name: &str,
-    default_position: &Position,
-    border: &str,
-) {
+fn set_popup_options(session_name: &str, default_position: &Position, border: &str) {
     let key = popup_key(session_name);
     let client = std::env::var("TMUX_MENU_CLIENT")
         .ok()
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| {
-            run_command("tmux display-message -p '#{client_name}'".to_string())
-                .unwrap_or_default()
+            run_command("tmux display-message -p '#{client_name}'".to_string()).unwrap_or_default()
         });
     let _ = run_command(format!(
         "tmux set -g @popup_default_geom_{key} {}; \
@@ -377,14 +373,23 @@ fn main() -> Result<()> {
                 .unwrap_or_else(|| default_position.clone());
 
             if !keys.is_empty() {
-                pipe::create()?;
+                let pipe = pipe::create()?;
 
-                let mut base_arguments = vec!["input".to_string(), "--key".to_string()];
+                let mut base_arguments = vec![
+                    "input".to_string(),
+                    "--pipe-path".to_string(),
+                    pipe.path
+                        .to_str()
+                        .ok_or_else(|| anyhow::anyhow!("invalid FIFO path"))?
+                        .to_string(),
+                    "--key".to_string(),
+                ];
                 base_arguments.extend(keys);
                 let cmd_to_run_input_of_this = run_this_with(&working_dir, base_arguments)?;
 
                 let (tx, rx) = channel::<()>();
-                let reader = thread::spawn(move || pipe::read(rx).expect("Failed to read pipe"));
+                let input_reader = pipe.reader.try_clone()?;
+                let reader = thread::spawn(move || pipe::read(input_reader, rx));
 
                 if as_floating_pane {
                     tmux.new_pane(cmd_to_run_input_of_this, &position, true)?;
@@ -403,10 +408,11 @@ fn main() -> Result<()> {
 
                 let _ = tx.send(());
 
-                let result = reader.join().expect("Failed to join reader thread");
+                let result = reader
+                    .join()
+                    .map_err(|_| anyhow::anyhow!("Input reader failed"))??;
 
                 if result.is_empty() {
-                    pipe::remove()?;
                     return Ok(());
                 }
 
@@ -419,8 +425,6 @@ fn main() -> Result<()> {
                 .to_str()
                 .ok_or_else(|| anyhow::anyhow!("working directory path is not valid UTF-8"))?;
             cmd = format!("cd {} && {}", shell_quote(working_dir), cmd);
-
-            pipe::remove()?;
 
             if persistent_session.is_some() {
                 if as_floating_pane {
@@ -483,7 +487,10 @@ fn main() -> Result<()> {
             }
 
             let serialized_result = to_string(&received_inputs)?;
-            pipe::write(serialized_result)?
+            let pipe_path = sub_matches
+                .get_one::<String>("pipe-path")
+                .ok_or_else(|| anyhow::anyhow!("Input FIFO is required"))?;
+            pipe::write(std::path::Path::new(pipe_path), serialized_result)?
         }
         _ => unreachable!(),
     }
