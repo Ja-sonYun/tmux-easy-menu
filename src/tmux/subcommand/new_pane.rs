@@ -80,6 +80,7 @@ impl Tmux {
         close_after_command: bool,
     ) -> Result<Child> {
         let mut arguments = vec![NEW_PANE.to_string()];
+        arguments.append(&mut Self::construct_target_arguments());
         arguments.append(&mut Self::construct_pane_arguments(position)?);
         if !close_after_command {
             arguments.push("-k".to_string());

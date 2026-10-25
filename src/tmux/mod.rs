@@ -28,6 +28,14 @@ impl Tmux {
             .unwrap_or_default()
     }
 
+    fn construct_target_arguments() -> Vec<String> {
+        std::env::var("TMUX_MENU_PANE")
+            .ok()
+            .filter(|value| !value.is_empty())
+            .map(|pane| vec!["-t".to_string(), pane])
+            .unwrap_or_default()
+    }
+
     fn construct_position_arguments(position: &Position) -> Vec<String> {
         if let (Some(w), Some(h)) = (position.w.clone(), position.h.clone()) {
             vec![

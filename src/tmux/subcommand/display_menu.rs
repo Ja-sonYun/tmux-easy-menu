@@ -116,10 +116,7 @@ impl Tmux {
             println!("Displaying: {:?}", menu);
         }
         arguments.append(&mut Self::construct_client_arguments());
-        if let Ok(pane) = std::env::var("TMUX_MENU_PANE") {
-            arguments.push("-t".to_string());
-            arguments.push(pane);
-        }
+        arguments.append(&mut Self::construct_target_arguments());
         arguments.append(&mut Self::construct_position_arguments(&menu.position));
         arguments.append(&mut Self::construct_title_arguments(&menu.title));
         arguments.append(&mut Self::construct_border_arguments(&menu.border));
