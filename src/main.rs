@@ -175,7 +175,8 @@ fn set_popup_options(session_name: &str, default_position: &Position, border: &s
         });
     let _ = run_command(format!(
         "tmux set -g @popup_default_geom_{key} {}; \
-         tmux set -g @popup_client_{key} {}; tmux set -g @popup_border_{key} {}",
+         tmux set -g @popup_client_{key} {}; tmux set -g @popup_border_{key} {}; \
+         tmux set -g @tmux_menu_popup_{key} 1",
         shell_quote(&popup_geometry(default_position)),
         shell_quote(&client),
         shell_quote(border)
@@ -186,7 +187,8 @@ fn clear_popup_options(session_name: &str) {
     let key = popup_key(session_name);
     let _ = run_command(format!(
         "tmux set -gu @popup_geom_{key}; tmux set -gu @popup_default_geom_{key}; \
-         tmux set -gu @popup_border_{key}; tmux set -gu @popup_client_{key}"
+         tmux set -gu @popup_border_{key}; tmux set -gu @popup_client_{key}; \
+         tmux set -gu @tmux_menu_popup_{key}"
     ));
 }
 
@@ -286,13 +288,22 @@ fn run_show(
     y: Option<String>,
     verbose: u8,
 ) -> Result<()> {
+    let tmux = Tmux::new();
+    let parent = tmux.popup_parent()?;
+    let working_dir = parent
+        .as_ref()
+        .map(|parent| parent.working_dir.as_str())
+        .unwrap_or(&working_dir);
     let working_dir = canonicalize(PathBuf::from(working_dir))?;
+    anyhow::ensure!(working_dir.is_dir(), "Working directory is not a directory");
     let path = canonicalize(PathBuf::from(menu))?;
     let mut menus = Menus::load(path, working_dir)?;
 
     apply_cli_position(&mut menus, x, y);
 
-    let tmux = Tmux::new();
+    if let Some(parent) = parent {
+        tmux.leave_popup(&parent)?;
+    }
     tmux.display_menu(&menus, &verbose)?;
     Ok(())
 }
